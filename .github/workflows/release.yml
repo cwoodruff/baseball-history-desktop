@@ -1,9 +1,9 @@
 name: Release
 
-# Builds the macOS app bundle.
+# Builds the app for macOS, Windows and Linux.
 # - Pushing a `v*` tag (e.g. `v0.1.0`) builds it and publishes a GitHub release.
 # - Running the workflow manually, or a pull request that edits this file,
-#   only builds it and keeps the bundle as a workflow artifact.
+#   only builds it and keeps the packages as workflow artifacts.
 on:
   push:
     tags:
@@ -22,11 +22,26 @@ env:
   CARGO_PROFILE_RELEASE_DEBUG: 0
 
 jobs:
+  version:
+    name: Read version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: version
+        run: |
+          version=$(cargo metadata --format-version 1 --no-deps | jq -r '.packages[0].version')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match Cargo.toml version $version"
+            exit 1
+          fi
+
   macos:
     name: macOS app bundle
+    needs: version
     runs-on: macos-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -39,16 +54,6 @@ jobs:
         with:
           tool: cargo-bundle@0.12.0
 
-      - name: Read version
-        id: version
-        run: |
-          version=$(cargo metadata --format-version 1 --no-deps | jq -r '.packages[0].version')
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "v$version" ]]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match Cargo.toml version $version"
-            exit 1
-          fi
-
       # Repeating --target makes cargo-bundle combine both builds into one
       # universal (Apple Silicon + Intel) binary with lipo.
       - name: Build app bundle and disk image
@@ -60,9 +65,8 @@ jobs:
           cargo bundle --release --format dmg $targets
 
       - name: Package artifacts
-        id: package
         env:
-          VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ needs.version.outputs.version }}
         run: |
           out="target/universal/release/bundle"
           app="$out/osx/Baseball History.app"
@@ -71,21 +75,135 @@ jobs:
           name="baseball-history-$VERSION-macos-universal"
           ditto -c -k --keepParent "$app" "dist/$name.zip"
           cp "$out/dmg/Baseball History.dmg" "dist/$name.dmg"
-          (cd dist && shasum -a 256 * > SHA256SUMS.txt)
           ls -la dist
 
       - uses: actions/upload-artifact@v4
         with:
-          name: baseball-history-macos-universal
+          name: baseball-history-macos
           path: dist/*
           if-no-files-found: error
 
-      - name: Publish GitHub release
-        if: github.ref_type == 'tag'
+  windows:
+    name: Windows installer
+    needs: version
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache-save-if: false
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-bundle@0.12.0
+
+      - name: Build installer
+        run: |
+          cargo fetch --locked
+          cargo bundle --release --format msi
+
+      - name: Package artifacts
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          mkdir -p dist
+          name="baseball-history-$VERSION-windows-x86_64"
+          cp target/release/bundle/msi/*.msi "dist/$name.msi"
+          7z a -tzip "dist/$name.zip" ./target/release/baseball-history-desktop.exe
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: baseball-history-windows
+          path: dist/*
+          if-no-files-found: error
+
+  linux:
+    name: Linux package
+    needs: version
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # GPUI's X11/Wayland, font and Vulkan dependencies.
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            gcc g++ clang libfontconfig-dev libwayland-dev \
+            libxkbcommon-x11-dev libx11-xcb-dev \
+            libssl-dev libzstd-dev libasound2-dev \
+            libvulkan1 vulkan-validationlayers
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache-save-if: false
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-bundle@0.12.0
+
+      - name: Build Debian package
+        run: |
+          cargo fetch --locked
+          cargo bundle --release --format deb
+
+      - name: Package artifacts
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          bin=target/release/baseball-history-desktop
+          # The shared libraries the binary needs at runtime, for the deb's Depends.
+          ldd "$bin"
+          mkdir -p dist
+          name="baseball-history-$VERSION-linux-x86_64"
+          cp target/release/bundle/deb/*.deb "dist/$name.deb"
+          dpkg-deb --info "dist/$name.deb"
+          tar -czf "dist/$name.tar.gz" -C target/release baseball-history-desktop
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: baseball-history-linux
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub release
+    if: github.ref_type == 'tag'
+    needs: [macos, windows, linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: baseball-history-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/* \
-            --title "Baseball History $GITHUB_REF_NAME" \
-            --generate-notes \
-            --notes "The macOS build is a universal app (Apple Silicon and Intel). It is not code-signed or notarized: on first launch, right-click the app and choose Open."
+          (cd dist && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          # Re-running the workflow for an existing release replaces its files.
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* \
+              --title "Baseball History $GITHUB_REF_NAME" \
+              --generate-notes \
+              --notes-file - <<'EOF'
+          ## Downloads
+
+          - **macOS** (Apple Silicon and Intel): `.dmg`, or the zipped `.app`. Not code-signed or notarized: on first launch, right-click the app and choose **Open**.
+          - **Windows** (x64): the `.msi` installer, or the zipped `.exe`. Not code-signed: if SmartScreen warns, choose **More info → Run anyway**.
+          - **Linux** (x86_64): the `.deb` for Debian and Ubuntu, or the `.tar.gz` binary. Needs a Vulkan driver (e.g. `mesa-vulkan-drivers`).
+          EOF
+          fi

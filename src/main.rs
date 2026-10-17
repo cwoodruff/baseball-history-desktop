@@ -1,5 +1,8 @@
 //! Baseball History: a desktop client for the Baseball History Project API.
 
+// Release builds on Windows are GUI apps, so no console window opens with them.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use baseball_history_desktop::{
     theme,
     workspace::{self, Workspace},
