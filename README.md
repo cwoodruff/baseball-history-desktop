@@ -24,6 +24,13 @@ You need a recent stable Rust toolchain (edition 2024). On Linux you also need t
 cargo run --release
 ```
 
+To build a macOS app bundle (`Baseball History.app`, plus a `.dmg`) with the bundle identifier `com.baseballhistoryproject.desktop`:
+
+```sh
+cargo install cargo-bundle
+cargo bundle --release   # output: target/release/bundle/osx/ and target/release/bundle/dmg/
+```
+
 To point the app at another deployment of the API, set `BASEBALL_HISTORY_API_URL` (default `https://baseballhistoryproject.com`).
 
 ### Keyboard shortcuts

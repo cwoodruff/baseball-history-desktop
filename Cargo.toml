@@ -5,6 +5,21 @@ edition = "2024"
 description = "Cross-platform desktop client for the Baseball History Project"
 license = "MIT"
 
+# App bundle metadata for `cargo bundle` (https://github.com/burtonageo/cargo-bundle).
+# Running as a bundle gives macOS a bundle identifier, which the system
+# frameworks (window tabbing, App Intents) expect.
+[package.metadata.bundle]
+name = "Baseball History"
+identifier = "com.baseballhistoryproject.desktop"
+version = "0.1.0"
+copyright = "Data from the Lahman Baseball Database (CC BY-SA 3.0)"
+category = "public.app-category.sports"
+short_description = "Explore 150 years of baseball history."
+long_description = "A desktop client for the Baseball History Project API: players, teams, ballparks, leaderboards, the Hall of Fame, awards, postseason results and salaries."
+
+[package.metadata.bundle.osx]
+minimum_system_version = "10.15.7"
+
 [dependencies]
 gpui-kit = "0.7.3"
 anyhow = "1"
