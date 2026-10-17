@@ -39,7 +39,15 @@ Releases are built by `.github/workflows/release.yml`. To cut one, bump `version
 git tag v0.1.0 && git push origin v0.1.0
 ```
 
-The workflow builds a universal (Apple Silicon + Intel) `.app`, then publishes a `.dmg`, a zipped `.app` and `SHA256SUMS.txt` to a GitHub release. The build is not code-signed or notarized, so on first launch you need to right-click the app and choose **Open**. Running the workflow manually builds the same files as a workflow artifact without publishing a release.
+The workflow builds the app on each platform and publishes these to a GitHub release, with `SHA256SUMS.txt`:
+
+| Platform | Files |
+| --- | --- |
+| macOS (Apple Silicon + Intel) | `.dmg`, zipped `.app` |
+| Windows (x64) | `.msi` installer, zipped `.exe` |
+| Linux (x86_64) | `.deb`, `.tar.gz` binary |
+
+None of the builds are code-signed. On macOS, right-click the app and choose **Open** on first launch; on Windows, choose **More info → Run anyway** if SmartScreen warns. Running the workflow manually builds the same files as workflow artifacts without publishing a release.
 
 To point the app at another deployment of the API, set `BASEBALL_HISTORY_API_URL` (default `https://baseballhistoryproject.com`).
 

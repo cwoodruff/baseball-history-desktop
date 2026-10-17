@@ -14,6 +14,9 @@ identifier = "com.baseballhistoryproject.desktop"
 copyright = "Data from the Lahman Baseball Database (CC BY-SA 3.0)"
 category = "public.app-category.sports"
 short_description = "Explore 150 years of baseball history."
+# Libraries the Linux binary links or loads at runtime (X11/Wayland input,
+# fonts and Vulkan rendering).
+deb_depends = ["libc6", "libxcb1", "libxkbcommon0", "libxkbcommon-x11-0", "libwayland-client0", "libfontconfig1", "libvulkan1"]
 long_description = "A desktop client for the Baseball History Project API: players, teams, ballparks, leaderboards, the Hall of Fame, awards, postseason results and salaries."
 
 [package.metadata.bundle.osx]
