@@ -4,6 +4,18 @@ A native desktop client for the [Baseball History Project](https://baseballhisto
 
 It mirrors the features of the [ASP.NET Core web app](https://github.com/cwoodruff/baseball-history). Its data comes from the project's public REST API ([OpenAPI document](https://baseballhistoryproject.com/openapi/v1.json)). See [PLAN.md](PLAN.md) for the feature-by-feature mapping, including which web features are left out because the API doesn't provide their data.
 
+## Download
+
+Get the latest version from the **[Releases page](https://github.com/cwoodruff/baseball-history-desktop/releases/latest)**:
+
+| Platform | Download | Notes |
+| --- | --- | --- |
+| macOS 10.15+ (Apple Silicon and Intel) | `…-macos-universal.dmg` | Open the disk image and drag the app to Applications. |
+| Windows 10+ (x64) | `…-windows-x86_64.msi` | Or the `.zip` with a standalone `.exe`. |
+| Linux (x86_64) | `…-linux-x86_64.deb` | For Debian and Ubuntu (`sudo apt install ./baseball-history-*.deb`). Or the `.tar.gz` binary; it needs a Vulkan driver. |
+
+The builds aren't code-signed. On macOS, right-click the app and choose **Open** the first time; on Windows, choose **More info → Run anyway** if SmartScreen warns. Each release lists the files' checksums in `SHA256SUMS.txt`.
+
 ## Features
 
 - **Home:** dataset counts, career home-run and wins leaders, and recent Hall of Fame inductees.
@@ -36,7 +48,7 @@ cargo bundle --release   # output: target/release/bundle/osx/ and target/release
 Releases are built by `.github/workflows/release.yml`. To cut one, bump `version` in `Cargo.toml`, merge it, then push a matching tag:
 
 ```sh
-git tag v0.1.0 && git push origin v0.1.0
+git tag v0.1.1 && git push origin v0.1.1
 ```
 
 The workflow builds the app on each platform and publishes these to a GitHub release, with `SHA256SUMS.txt`:
