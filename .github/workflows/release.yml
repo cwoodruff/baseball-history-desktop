@@ -101,10 +101,12 @@ jobs:
         with:
           tool: cargo-bundle@0.12.0
 
+      # `wxsmsi` builds the installer with the WiX Toolset through `dotnet`.
+      # (cargo-bundle's built-in `msi` format rejects hyphens in the exe name.)
       - name: Build installer
         run: |
           cargo fetch --locked
-          cargo bundle --release --format msi
+          cargo bundle --release --format wxsmsi
 
       - name: Package artifacts
         env:
@@ -112,7 +114,7 @@ jobs:
         run: |
           mkdir -p dist
           name="baseball-history-$VERSION-windows-x86_64"
-          cp target/release/bundle/msi/*.msi "dist/$name.msi"
+          cp "$(find target/release/bundle -name '*.msi' | head -1)" "dist/$name.msi"
           7z a -tzip "dist/$name.zip" ./target/release/baseball-history-desktop.exe
           ls -la dist
 
@@ -156,9 +158,6 @@ jobs:
         env:
           VERSION: ${{ needs.version.outputs.version }}
         run: |
-          bin=target/release/baseball-history-desktop
-          # The shared libraries the binary needs at runtime, for the deb's Depends.
-          ldd "$bin"
           mkdir -p dist
           name="baseball-history-$VERSION-linux-x86_64"
           cp target/release/bundle/deb/*.deb "dist/$name.deb"
