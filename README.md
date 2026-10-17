@@ -31,6 +31,16 @@ cargo install cargo-bundle
 cargo bundle --release   # output: target/release/bundle/osx/ and target/release/bundle/dmg/
 ```
 
+### Releases
+
+Releases are built by `.github/workflows/release.yml`. To cut one, bump `version` in `Cargo.toml`, merge it, then push a matching tag:
+
+```sh
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+The workflow builds a universal (Apple Silicon + Intel) `.app`, then publishes a `.dmg`, a zipped `.app` and `SHA256SUMS.txt` to a GitHub release. The build is not code-signed or notarized, so on first launch you need to right-click the app and choose **Open**. Running the workflow manually builds the same files as a workflow artifact without publishing a release.
+
 To point the app at another deployment of the API, set `BASEBALL_HISTORY_API_URL` (default `https://baseballhistoryproject.com`).
 
 ### Keyboard shortcuts

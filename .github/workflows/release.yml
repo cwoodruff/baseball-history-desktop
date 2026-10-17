@@ -1,0 +1,91 @@
+name: Release
+
+# Builds the macOS app bundle.
+# - Pushing a `v*` tag (e.g. `v0.1.0`) builds it and publishes a GitHub release.
+# - Running the workflow manually, or a pull request that edits this file,
+#   only builds it and keeps the bundle as a workflow artifact.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_PROFILE_RELEASE_DEBUG: 0
+
+jobs:
+  macos:
+    name: macOS app bundle
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: aarch64-apple-darwin,x86_64-apple-darwin
+          cache-save-if: false
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-bundle@0.12.0
+
+      - name: Read version
+        id: version
+        run: |
+          version=$(cargo metadata --format-version 1 --no-deps | jq -r '.packages[0].version')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match Cargo.toml version $version"
+            exit 1
+          fi
+
+      # Repeating --target makes cargo-bundle combine both builds into one
+      # universal (Apple Silicon + Intel) binary with lipo.
+      - name: Build app bundle and disk image
+        run: |
+          # cargo-bundle has no --locked flag; fail here if Cargo.lock is stale.
+          cargo fetch --locked
+          targets="--target aarch64-apple-darwin --target x86_64-apple-darwin"
+          cargo bundle --release --format osx $targets
+          cargo bundle --release --format dmg $targets
+
+      - name: Package artifacts
+        id: package
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          out="target/universal/release/bundle"
+          app="$out/osx/Baseball History.app"
+          lipo -archs "$app/Contents/MacOS/baseball-history-desktop"
+          mkdir -p dist
+          name="baseball-history-$VERSION-macos-universal"
+          ditto -c -k --keepParent "$app" "dist/$name.zip"
+          cp "$out/dmg/Baseball History.dmg" "dist/$name.dmg"
+          (cd dist && shasum -a 256 * > SHA256SUMS.txt)
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: baseball-history-macos-universal
+          path: dist/*
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "Baseball History $GITHUB_REF_NAME" \
+            --generate-notes \
+            --notes "The macOS build is a universal app (Apple Silicon and Intel). It is not code-signed or notarized: on first launch, right-click the app and choose Open."
