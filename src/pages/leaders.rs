@@ -106,14 +106,29 @@ impl LeadersPage {
             page_size: PAGE_SIZE,
         };
         let stat_picker = picker::picker(
-            kind.stats().iter().map(|s| Opt::new(s.value, s.label)).collect(),
+            kind.stats()
+                .iter()
+                .map(|s| Opt::new(s.value, s.label))
+                .collect(),
             stat.value,
             false,
             window,
             cx,
         );
-        let from_picker = picker::picker(picker::years("All Time", catalog::FIRST_SEASON, catalog::LAST_SEASON), "", true, window, cx);
-        let to_picker = picker::picker(picker::years("Present", catalog::FIRST_SEASON, catalog::LAST_SEASON), "", true, window, cx);
+        let from_picker = picker::picker(
+            picker::years("All Time", catalog::FIRST_SEASON, catalog::LAST_SEASON),
+            "",
+            true,
+            window,
+            cx,
+        );
+        let to_picker = picker::picker(
+            picker::years("Present", catalog::FIRST_SEASON, catalog::LAST_SEASON),
+            "",
+            true,
+            window,
+            cx,
+        );
         let league_picker = picker::picker(
             std::iter::once(Opt::any("All Leagues"))
                 .chain(catalog::LEAGUES.iter().map(|l| Opt::new(l.value, l.label)))
@@ -124,7 +139,10 @@ impl LeadersPage {
             cx,
         );
         let min_picker = picker::picker(
-            kind.minimums().iter().map(|(v, label)| Opt::new(min_key(*v), *label)).collect(),
+            kind.minimums()
+                .iter()
+                .map(|(v, label)| Opt::new(min_key(*v), *label))
+                .collect(),
             &min_key(request.minimum.filter(|_| !request.qualified)),
             false,
             window,
@@ -134,26 +152,46 @@ impl LeadersPage {
             picker::select_value(&min_picker, "0", window, cx);
         }
         let subscriptions = vec![
-            cx.subscribe_in(&stat_picker, window, |this, _, event: &PickerEvent, window, cx| {
-                if let Some(stat) = picker::value_of(event) {
-                    this.set_stat(&stat, window, cx);
-                }
-            }),
-            cx.subscribe_in(&from_picker, window, |this, _, event: &PickerEvent, window, cx| {
-                this.request.from_year = picker::value_of(event).and_then(|v| v.parse().ok());
-                this.refetch(window, cx);
-            }),
-            cx.subscribe_in(&to_picker, window, |this, _, event: &PickerEvent, window, cx| {
-                this.request.to_year = picker::value_of(event).and_then(|v| v.parse().ok());
-                this.refetch(window, cx);
-            }),
-            cx.subscribe_in(&league_picker, window, |this, _, event: &PickerEvent, window, cx| {
-                this.request.league = picker::value_of(event);
-                this.refetch(window, cx);
-            }),
-            cx.subscribe_in(&min_picker, window, |this, _, event: &PickerEvent, window, cx| {
-                this.set_minimum(picker::value_of(event).as_deref(), window, cx);
-            }),
+            cx.subscribe_in(
+                &stat_picker,
+                window,
+                |this, _, event: &PickerEvent, window, cx| {
+                    if let Some(stat) = picker::value_of(event) {
+                        this.set_stat(&stat, window, cx);
+                    }
+                },
+            ),
+            cx.subscribe_in(
+                &from_picker,
+                window,
+                |this, _, event: &PickerEvent, window, cx| {
+                    this.request.from_year = picker::value_of(event).and_then(|v| v.parse().ok());
+                    this.refetch(window, cx);
+                },
+            ),
+            cx.subscribe_in(
+                &to_picker,
+                window,
+                |this, _, event: &PickerEvent, window, cx| {
+                    this.request.to_year = picker::value_of(event).and_then(|v| v.parse().ok());
+                    this.refetch(window, cx);
+                },
+            ),
+            cx.subscribe_in(
+                &league_picker,
+                window,
+                |this, _, event: &PickerEvent, window, cx| {
+                    this.request.league = picker::value_of(event);
+                    this.refetch(window, cx);
+                },
+            ),
+            cx.subscribe_in(
+                &min_picker,
+                window,
+                |this, _, event: &PickerEvent, window, cx| {
+                    this.set_minimum(picker::value_of(event).as_deref(), window, cx);
+                },
+            ),
         ];
         let mut page = Self {
             kind,
@@ -240,13 +278,28 @@ impl LeadersPage {
     }
 
     /// A header handler that re-ranks the board by `stat`.
-    fn rank_by(&self, stat: &'static str, cx: &mut Context<Self>) -> impl Fn(&ClickEvent, &mut Window, &mut App) + 'static {
+    fn rank_by(
+        &self,
+        stat: &'static str,
+        cx: &mut Context<Self>,
+    ) -> impl Fn(&ClickEvent, &mut Window, &mut App) + 'static {
         cx.listener(move |this, _, window, cx| this.set_stat(stat, window, cx))
     }
 
-    fn sort_col<'a, T>(&self, col: Col<'a, T>, stat: &'static str, cx: &mut Context<Self>) -> Col<'a, T> {
+    fn sort_col<'a, T>(
+        &self,
+        col: Col<'a, T>,
+        stat: &'static str,
+        cx: &mut Context<Self>,
+    ) -> Col<'a, T> {
         let active = self.request.stat == stat;
-        let label = self.kind.stats().iter().find(|s| s.value == stat).map(|s| s.label).unwrap_or(stat);
+        let label = self
+            .kind
+            .stats()
+            .iter()
+            .find(|s| s.value == stat)
+            .map(|s| s.label)
+            .unwrap_or(stat);
         col.on_header_click(self.rank_by(stat, cx))
             .active(active)
             .tooltip(format!("Rank by {label}"))
@@ -259,7 +312,12 @@ impl LeadersPage {
             Col::num("Rank", 56., |r: &BattingLeader| r.rank.to_string()),
             Col::element("Player", 220., move |r: &BattingLeader, _| {
                 widgets::player_link(
-                    SharedString::from(format!("bl-{}-{}-{}", r.player_id, r.year.unwrap_or(0), r.rank)),
+                    SharedString::from(format!(
+                        "bl-{}-{}-{}",
+                        r.player_id,
+                        r.year.unwrap_or(0),
+                        r.rank
+                    )),
                     &r.player_id,
                     r.player_name.clone().unwrap_or_else(|| r.player_id.clone()),
                     r.is_hall_of_famer,
@@ -268,32 +326,89 @@ impl LeadersPage {
             }),
         ];
         if single {
-            cols.push(Col::text("Year", 56., |r: &BattingLeader| format::year(r.year)));
-            cols.push(Col::text("Team", 180., |r: &BattingLeader| format::text(r.team_name.as_deref().or(r.team_id.as_deref()))));
+            cols.push(Col::text("Year", 56., |r: &BattingLeader| {
+                format::year(r.year)
+            }));
+            cols.push(Col::text("Team", 180., |r: &BattingLeader| {
+                format::text(r.team_name.as_deref().or(r.team_id.as_deref()))
+            }));
         }
         let extra: Option<Col<BattingLeader>> = match self.request.stat.as_str() {
-            "obp" => Some(Col::num("OBP", 64., |r: &BattingLeader| format::rate(r.obp))),
-            "slg" => Some(Col::num("SLG", 64., |r: &BattingLeader| format::rate(r.slg))),
+            "obp" => Some(Col::num("OBP", 64., |r: &BattingLeader| {
+                format::rate(r.obp)
+            })),
+            "slg" => Some(Col::num("SLG", 64., |r: &BattingLeader| {
+                format::rate(r.slg)
+            })),
             "tb" => Some(Col::num("TB", 64., |r: &BattingLeader| {
                 format::int(Some(
-                    r.hits.unwrap_or(0) + r.doubles.unwrap_or(0) + 2 * r.triples.unwrap_or(0) + 3 * r.home_runs.unwrap_or(0),
+                    r.hits.unwrap_or(0)
+                        + r.doubles.unwrap_or(0)
+                        + 2 * r.triples.unwrap_or(0)
+                        + 3 * r.home_runs.unwrap_or(0),
                 ))
             })),
             _ => None,
         };
         cols.extend([
-            self.sort_col(Col::num("G", 56., |r: &BattingLeader| format::int(r.games)), "g", cx),
+            self.sort_col(
+                Col::num("G", 56., |r: &BattingLeader| format::int(r.games)),
+                "g",
+                cx,
+            ),
             Col::num("AB", 64., |r: &BattingLeader| format::int(r.at_bats)),
-            self.sort_col(Col::num("H", 56., |r: &BattingLeader| format::int(r.hits)), "h", cx),
-            self.sort_col(Col::num("2B", 56., |r: &BattingLeader| format::int(r.doubles)), "2b", cx),
-            self.sort_col(Col::num("3B", 56., |r: &BattingLeader| format::int(r.triples)), "3b", cx),
-            self.sort_col(Col::num("HR", 56., |r: &BattingLeader| format::int(r.home_runs)), "hr", cx),
-            self.sort_col(Col::num("RBI", 60., |r: &BattingLeader| format::int(r.rbi)), "rbi", cx),
-            self.sort_col(Col::num("R", 56., |r: &BattingLeader| format::int(r.runs)), "r", cx),
-            self.sort_col(Col::num("SB", 56., |r: &BattingLeader| format::int(r.stolen_bases)), "sb", cx),
-            self.sort_col(Col::num("BB", 56., |r: &BattingLeader| format::int(r.walks)), "bb", cx),
-            self.sort_col(Col::num("AVG", 64., |r: &BattingLeader| format::rate(r.batting_average)), "avg", cx),
-            self.sort_col(Col::num("OPS", 64., |r: &BattingLeader| format::rate(r.ops)), "ops", cx),
+            self.sort_col(
+                Col::num("H", 56., |r: &BattingLeader| format::int(r.hits)),
+                "h",
+                cx,
+            ),
+            self.sort_col(
+                Col::num("2B", 56., |r: &BattingLeader| format::int(r.doubles)),
+                "2b",
+                cx,
+            ),
+            self.sort_col(
+                Col::num("3B", 56., |r: &BattingLeader| format::int(r.triples)),
+                "3b",
+                cx,
+            ),
+            self.sort_col(
+                Col::num("HR", 56., |r: &BattingLeader| format::int(r.home_runs)),
+                "hr",
+                cx,
+            ),
+            self.sort_col(
+                Col::num("RBI", 60., |r: &BattingLeader| format::int(r.rbi)),
+                "rbi",
+                cx,
+            ),
+            self.sort_col(
+                Col::num("R", 56., |r: &BattingLeader| format::int(r.runs)),
+                "r",
+                cx,
+            ),
+            self.sort_col(
+                Col::num("SB", 56., |r: &BattingLeader| format::int(r.stolen_bases)),
+                "sb",
+                cx,
+            ),
+            self.sort_col(
+                Col::num("BB", 56., |r: &BattingLeader| format::int(r.walks)),
+                "bb",
+                cx,
+            ),
+            self.sort_col(
+                Col::num("AVG", 64., |r: &BattingLeader| {
+                    format::rate(r.batting_average)
+                }),
+                "avg",
+                cx,
+            ),
+            self.sort_col(
+                Col::num("OPS", 64., |r: &BattingLeader| format::rate(r.ops)),
+                "ops",
+                cx,
+            ),
         ]);
         if let Some(extra) = extra {
             cols.push(extra.active(true));
@@ -308,7 +423,12 @@ impl LeadersPage {
             Col::num("Rank", 56., |r: &PitchingLeader| r.rank.to_string()),
             Col::element("Player", 220., move |r: &PitchingLeader, _| {
                 widgets::player_link(
-                    SharedString::from(format!("pl-{}-{}-{}", r.player_id, r.year.unwrap_or(0), r.rank)),
+                    SharedString::from(format!(
+                        "pl-{}-{}-{}",
+                        r.player_id,
+                        r.year.unwrap_or(0),
+                        r.rank
+                    )),
                     &r.player_id,
                     r.player_name.clone().unwrap_or_else(|| r.player_id.clone()),
                     r.is_hall_of_famer,
@@ -317,16 +437,28 @@ impl LeadersPage {
             }),
         ];
         if single {
-            cols.push(Col::text("Year", 56., |r: &PitchingLeader| format::year(r.year)));
-            cols.push(Col::text("Team", 180., |r: &PitchingLeader| format::text(r.team_name.as_deref().or(r.team_id.as_deref()))));
+            cols.push(Col::text("Year", 56., |r: &PitchingLeader| {
+                format::year(r.year)
+            }));
+            cols.push(Col::text("Team", 180., |r: &PitchingLeader| {
+                format::text(r.team_name.as_deref().or(r.team_id.as_deref()))
+            }));
         }
         let extra: Option<Col<PitchingLeader>> = match self.request.stat.as_str() {
-            "cg" => Some(Col::num("CG", 56., |r: &PitchingLeader| format::int(r.complete_games))),
-            "sho" => Some(Col::num("SHO", 56., |r: &PitchingLeader| format::int(r.shutouts))),
+            "cg" => Some(Col::num("CG", 56., |r: &PitchingLeader| {
+                format::int(r.complete_games)
+            })),
+            "sho" => Some(Col::num("SHO", 56., |r: &PitchingLeader| {
+                format::int(r.shutouts)
+            })),
             "k9" => Some(Col::num("K/9", 64., |r: &PitchingLeader| {
                 let ip = r.innings_pitched.unwrap_or(0.);
                 let innings = ip.trunc() + ((ip - ip.trunc()) * 10.).round() / 3.;
-                if innings > 0. { format!("{:.1}", r.strikeouts.unwrap_or(0) as f64 * 9. / innings) } else { DASH.into() }
+                if innings > 0. {
+                    format!("{:.1}", r.strikeouts.unwrap_or(0) as f64 * 9. / innings)
+                } else {
+                    DASH.into()
+                }
             })),
             "wpct" => Some(Col::num("W%", 64., |r: &PitchingLeader| {
                 let (w, l) = (r.wins.unwrap_or(0), r.losses.unwrap_or(0));
@@ -335,16 +467,54 @@ impl LeadersPage {
             _ => None,
         };
         cols.extend([
-            self.sort_col(Col::num("G", 56., |r: &PitchingLeader| format::int(r.games)), "g", cx),
-            self.sort_col(Col::num("GS", 56., |r: &PitchingLeader| format::int(r.games_started)), "gs", cx),
-            self.sort_col(Col::num("W", 56., |r: &PitchingLeader| format::int(r.wins)), "w", cx),
-            self.sort_col(Col::num("L", 56., |r: &PitchingLeader| format::int(r.losses)), "l", cx),
-            self.sort_col(Col::num("SV", 56., |r: &PitchingLeader| format::int(r.saves)), "sv", cx),
-            self.sort_col(Col::num("IP", 72., |r: &PitchingLeader| format::innings(r.innings_pitched)), "ip", cx),
-            self.sort_col(Col::num("SO", 64., |r: &PitchingLeader| format::int(r.strikeouts)), "so", cx),
+            self.sort_col(
+                Col::num("G", 56., |r: &PitchingLeader| format::int(r.games)),
+                "g",
+                cx,
+            ),
+            self.sort_col(
+                Col::num("GS", 56., |r: &PitchingLeader| format::int(r.games_started)),
+                "gs",
+                cx,
+            ),
+            self.sort_col(
+                Col::num("W", 56., |r: &PitchingLeader| format::int(r.wins)),
+                "w",
+                cx,
+            ),
+            self.sort_col(
+                Col::num("L", 56., |r: &PitchingLeader| format::int(r.losses)),
+                "l",
+                cx,
+            ),
+            self.sort_col(
+                Col::num("SV", 56., |r: &PitchingLeader| format::int(r.saves)),
+                "sv",
+                cx,
+            ),
+            self.sort_col(
+                Col::num("IP", 72., |r: &PitchingLeader| {
+                    format::innings(r.innings_pitched)
+                }),
+                "ip",
+                cx,
+            ),
+            self.sort_col(
+                Col::num("SO", 64., |r: &PitchingLeader| format::int(r.strikeouts)),
+                "so",
+                cx,
+            ),
             Col::num("BB", 56., |r: &PitchingLeader| format::int(r.walks)),
-            self.sort_col(Col::num("ERA", 64., |r: &PitchingLeader| format::decimal2(r.era)), "era", cx),
-            self.sort_col(Col::num("WHIP", 64., |r: &PitchingLeader| format::decimal2(r.whip)), "whip", cx),
+            self.sort_col(
+                Col::num("ERA", 64., |r: &PitchingLeader| format::decimal2(r.era)),
+                "era",
+                cx,
+            ),
+            self.sort_col(
+                Col::num("WHIP", 64., |r: &PitchingLeader| format::decimal2(r.whip)),
+                "whip",
+                cx,
+            ),
         ]);
         if let Some(extra) = extra {
             cols.push(extra.active(true));
@@ -377,13 +547,37 @@ impl Page for LeadersPage {
 impl Render for LeadersPage {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let stat = self.stat();
-        let unit = if self.kind == Kind::Batting { "AB" } else { "IP" };
+        let unit = if self.kind == Kind::Batting {
+            "AB"
+        } else {
+            "IP"
+        };
         let filters = widgets::filter_bar(cx)
-            .child(widgets::field("Stat", picker::dropdown(&self.stat_picker, 200.), cx))
-            .child(widgets::field("From Year", picker::dropdown(&self.from_picker, 120.), cx))
-            .child(widgets::field("To Year", picker::dropdown(&self.to_picker, 120.), cx))
-            .child(widgets::field("League", picker::dropdown(&self.league_picker, 220.), cx))
-            .child(widgets::field(&format!("Min {unit}"), picker::dropdown(&self.min_picker, 140.), cx))
+            .child(widgets::field(
+                "Stat",
+                picker::dropdown(&self.stat_picker, 200.),
+                cx,
+            ))
+            .child(widgets::field(
+                "From Year",
+                picker::dropdown(&self.from_picker, 120.),
+                cx,
+            ))
+            .child(widgets::field(
+                "To Year",
+                picker::dropdown(&self.to_picker, 120.),
+                cx,
+            ))
+            .child(widgets::field(
+                "League",
+                picker::dropdown(&self.league_picker, 220.),
+                cx,
+            ))
+            .child(widgets::field(
+                &format!("Min {unit}"),
+                picker::dropdown(&self.min_picker, 140.),
+                cx,
+            ))
             .child(
                 div().pb_1().child(
                     Checkbox::new("single-season")
@@ -437,19 +631,33 @@ impl Render for LeadersPage {
 
         let (body, meta): (AnyElement, Option<(u32, u32, u32)>) = match &self.rows {
             Loadable::Ready(rows) if rows.is_empty() => (
-                widgets::empty_state("No Statistics Available", "No statistics match the selected criteria.", cx),
+                widgets::empty_state(
+                    "No Statistics Available",
+                    "No statistics match the selected criteria.",
+                    cx,
+                ),
                 None,
             ),
             Loadable::Ready(Rows::Batting(page)) => {
                 let page = page.clone();
-                (self.batting_table(&page, cx), Some((page.page, page.total_pages, page.total_count)))
+                (
+                    self.batting_table(&page, cx),
+                    Some((page.page, page.total_pages, page.total_count)),
+                )
             }
             Loadable::Ready(Rows::Pitching(page)) => {
                 let page = page.clone();
-                (self.pitching_table(&page, cx), Some((page.page, page.total_pages, page.total_count)))
+                (
+                    self.pitching_table(&page, cx),
+                    Some((page.page, page.total_pages, page.total_count)),
+                )
             }
             Loadable::Failed(message) => (
-                widgets::error_state("leaders-error", message, cx.listener(|this, _, window, cx| this.reload(window, cx))),
+                widgets::error_state(
+                    "leaders-error",
+                    message,
+                    cx.listener(|this, _, window, cx| this.reload(window, cx)),
+                ),
                 None,
             ),
             _ => (widgets::loading_state("Loading stats…", cx), None),
@@ -457,7 +665,12 @@ impl Render for LeadersPage {
         let count = self.rows.ready().map(|r| r.meta().2);
         let card = widgets::section_with(
             format!("{} - {}", self.kind.label(), stat.label),
-            widgets::note(count.map(|c| format!("{} players", format::int(Some(c as i64)))).unwrap_or_default(), cx),
+            widgets::note(
+                count
+                    .map(|c| format!("{} players", format::int(Some(c as i64))))
+                    .unwrap_or_default(),
+                cx,
+            ),
             cx,
         )
         .child(body);
@@ -469,7 +682,8 @@ impl Render for LeadersPage {
                 pages,
                 total,
                 move |page, window, cx| {
-                    this.update(cx, |this, cx| this.set_page(page, window, cx)).ok();
+                    this.update(cx, |this, cx| this.set_page(page, window, cx))
+                        .ok();
                 },
                 cx,
             )
@@ -477,7 +691,13 @@ impl Render for LeadersPage {
 
         widgets::page_body("leaders", &self.scroll).child(
             widgets::page_column()
-                .child(widgets::page_header(Some("Stats"), self.kind.label(), None, vec![], cx))
+                .child(widgets::page_header(
+                    Some("Stats"),
+                    self.kind.label(),
+                    None,
+                    vec![],
+                    cx,
+                ))
                 .child(filters)
                 .child(scope_note)
                 .children(qualified_note)

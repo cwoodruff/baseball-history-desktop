@@ -1,13 +1,11 @@
 //! Home: hero with dataset counts, career leaders, recent inductees and quick links.
 
+use gpui_kit::assets::IconName;
 use gpui_kit::component::{
-    ActiveTheme as _, Sizable as _, StyledExt as _,
-    button::Button,
-    h_flex, v_flex,
+    ActiveTheme as _, Sizable as _, StyledExt as _, button::Button, h_flex, v_flex,
 };
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
-use gpui_kit::assets::IconName;
 
 use crate::api::LeaderRequest;
 use crate::api::models::{BattingLeader, HallOfFamer, PitchingLeader};
@@ -129,7 +127,7 @@ impl HomePage {
                         .on_click(self.nav.to(all)),
                 ),
             )
-        .into_any_element()
+            .into_any_element()
     }
 
     fn render_hero(&self, cx: &mut Context<Self>) -> AnyElement {
@@ -168,7 +166,7 @@ impl HomePage {
                             .on_click(self.nav.to(Route::Teams)),
                     ),
             )
-        .into_any_element()
+            .into_any_element()
     }
 
     fn render_counts(&self, cx: &mut Context<Self>) -> AnyElement {
@@ -181,7 +179,11 @@ impl HomePage {
             _ => ("…".to_string(), "…".to_string(), "…".to_string()),
         };
         widgets::stat_row(
-            vec![("Players", players), ("Franchises", franchises), ("Hall of Famers", hof)],
+            vec![
+                ("Players", players),
+                ("Franchises", franchises),
+                ("Hall of Famers", hof),
+            ],
             cx,
         )
         .into_any_element()
@@ -248,27 +250,59 @@ impl HomePage {
                 .into_any_element(),
             _ => widgets::loading_state("Loading inductees…", cx).into_any_element(),
         };
-        widgets::section("Recent Hall of Fame Inductees", cx).child(body).child(
-            h_flex().px_3().pb_2().child(
-                Button::new("hof-all")
-                    .small()
-                    .outline()
-                    .label("View All Hall of Famers")
-                    .on_click(self.nav.to(Route::HallOfFame { year: None, category: None })),
-            ),
-        )
-        .into_any_element()
+        widgets::section("Recent Hall of Fame Inductees", cx)
+            .child(body)
+            .child(
+                h_flex().px_3().pb_2().child(
+                    Button::new("hof-all")
+                        .small()
+                        .outline()
+                        .label("View All Hall of Famers")
+                        .on_click(self.nav.to(Route::HallOfFame {
+                            year: None,
+                            category: None,
+                        })),
+                ),
+            )
+            .into_any_element()
     }
 
     fn render_quick_links(&self, cx: &mut Context<Self>) -> AnyElement {
         let links = [
-            ("ql-players", IconName::Users, "Players", "Browse A-Z", Route::Players { letter: 'A' }),
-            ("ql-teams", IconName::Flag, "Teams", "All Franchises", Route::Teams),
-            ("ql-batting", IconName::ChartColumn, "Batting Stats", "Leaderboards", Route::BattingLeaders),
-            ("ql-pitching", IconName::ChartBar, "Pitching Stats", "Leaderboards", Route::PitchingLeaders),
+            (
+                "ql-players",
+                IconName::Users,
+                "Players",
+                "Browse A-Z",
+                Route::Players { letter: 'A' },
+            ),
+            (
+                "ql-teams",
+                IconName::Flag,
+                "Teams",
+                "All Franchises",
+                Route::Teams,
+            ),
+            (
+                "ql-batting",
+                IconName::ChartColumn,
+                "Batting Stats",
+                "Leaderboards",
+                Route::BattingLeaders,
+            ),
+            (
+                "ql-pitching",
+                IconName::ChartBar,
+                "Pitching Stats",
+                "Leaderboards",
+                Route::PitchingLeaders,
+            ),
         ];
-        h_flex().w_full().gap_3().flex_wrap().children(links.into_iter().map(
-            |(id, icon, title, subtitle, route)| {
+        h_flex()
+            .w_full()
+            .gap_3()
+            .flex_wrap()
+            .children(links.into_iter().map(|(id, icon, title, subtitle, route)| {
                 Button::new(id)
                     .outline()
                     .flex_1()
@@ -281,7 +315,11 @@ impl HomePage {
                             .p_2()
                             .gap_3()
                             .items_center()
-                            .child(gpui_kit::component::Icon::new(icon).large().text_color(cx.theme().primary))
+                            .child(
+                                gpui_kit::component::Icon::new(icon)
+                                    .large()
+                                    .text_color(cx.theme().primary),
+                            )
                             .child(
                                 v_flex()
                                     .items_start()
@@ -289,9 +327,8 @@ impl HomePage {
                                     .child(widgets::note(subtitle, cx)),
                             ),
                     )
-            },
-        ))
-        .into_any_element()
+            }))
+            .into_any_element()
     }
 }
 
@@ -317,7 +354,11 @@ impl Page for HomePage {
                     }
                     let franchises = api.franchises(None, false)?.len();
                     let hall_of_famers = api.hall_of_fame(None, None, 1, 1)?.total_count;
-                    Ok(Counts { players, franchises, hall_of_famers })
+                    Ok(Counts {
+                        players,
+                        franchises,
+                        hall_of_famers,
+                    })
                 },
                 |this: &mut Self, result, _| this.counts = Loadable::from_result(result),
             ),
@@ -375,15 +416,24 @@ impl Render for HomePage {
             Route::PitchingLeaders,
             cx,
         );
-        widgets::page_body("home", &self.scroll).child(
-            widgets::page_column()
-                .child(self.render_hero(cx))
-                .child(self.render_counts(cx))
-                .child(h_flex().w_full().gap_5().flex_wrap().items_start().child(hr).child(wins))
-                .child(self.render_inductees(cx))
-                .child(self.render_quick_links(cx))
-                .when(false, |this| this),
-        )
-        .into_any_element()
+        widgets::page_body("home", &self.scroll)
+            .child(
+                widgets::page_column()
+                    .child(self.render_hero(cx))
+                    .child(self.render_counts(cx))
+                    .child(
+                        h_flex()
+                            .w_full()
+                            .gap_5()
+                            .flex_wrap()
+                            .items_start()
+                            .child(hr)
+                            .child(wins),
+                    )
+                    .child(self.render_inductees(cx))
+                    .child(self.render_quick_links(cx))
+                    .when(false, |this| this),
+            )
+            .into_any_element()
     }
 }

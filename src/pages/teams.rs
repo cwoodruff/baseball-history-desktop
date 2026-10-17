@@ -3,9 +3,9 @@
 use gpui_kit::component::{
     ActiveTheme as _, Sizable as _, StyledExt as _,
     button::{Button, ButtonVariants as _},
-    tab::TabBar,
     h_flex,
     input::{Input, InputEvent, InputState},
+    tab::TabBar,
     tag::Tag,
     v_flex,
 };
@@ -38,7 +38,11 @@ impl TeamsPage {
     pub fn new(nav: Navigator, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let name = cx.new(|cx| InputState::new(window, cx).placeholder("Filter by name…"));
         let eras = std::iter::once(Opt::any("All Eras"))
-            .chain(catalog::decades().into_iter().map(|d| Opt::new(d.to_string(), format!("{d}s"))))
+            .chain(
+                catalog::decades()
+                    .into_iter()
+                    .map(|d| Opt::new(d.to_string(), format!("{d}s"))),
+            )
             .collect();
         let era_picker = picker::picker(eras, "", false, window, cx);
         let subscriptions = vec![
@@ -47,10 +51,14 @@ impl TeamsPage {
                     cx.notify();
                 }
             }),
-            cx.subscribe_in(&era_picker, window, |this, _, event: &PickerEvent, _, cx| {
-                this.era = picker::value_of(event).and_then(|v| v.parse().ok());
-                cx.notify();
-            }),
+            cx.subscribe_in(
+                &era_picker,
+                window,
+                |this, _, event: &PickerEvent, _, cx| {
+                    this.era = picker::value_of(event).and_then(|v| v.parse().ok());
+                    cx.notify();
+                },
+            ),
         ];
         let mut page = Self {
             nav,
@@ -67,7 +75,12 @@ impl TeamsPage {
         page
     }
 
-    fn set_league(&mut self, league: Option<&'static str>, window: &mut Window, cx: &mut Context<Self>) {
+    fn set_league(
+        &mut self,
+        league: Option<&'static str>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if self.league != league {
             self.league = league;
             self.reload(window, cx);
@@ -75,7 +88,8 @@ impl TeamsPage {
     }
 
     fn clear_filters(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.name.update(cx, |state, cx| state.set_value("", window, cx));
+        self.name
+            .update(cx, |state, cx| state.set_value("", window, cx));
         picker::select_value(&self.era_picker, "", window, cx);
         self.era = None;
         self.set_league(None, window, cx);
@@ -84,11 +98,17 @@ impl TeamsPage {
 
     fn visible(&self, cx: &App) -> Vec<FranchiseSummary> {
         let query = self.name.read(cx).value().trim().to_lowercase();
-        let Some(all) = self.franchises.ready() else { return vec![] };
+        let Some(all) = self.franchises.ready() else {
+            return vec![];
+        };
         all.iter()
             .filter(|f| {
                 query.is_empty()
-                    || f.franchise_name.as_deref().unwrap_or("").to_lowercase().contains(&query)
+                    || f.franchise_name
+                        .as_deref()
+                        .unwrap_or("")
+                        .to_lowercase()
+                        .contains(&query)
                     || f.franchise_id.to_lowercase().contains(&query)
             })
             .filter(|f| match self.era {
@@ -105,8 +125,15 @@ impl TeamsPage {
     }
 
     fn card(&self, f: &FranchiseSummary, cx: &App) -> AnyElement {
-        let name = f.franchise_name.clone().unwrap_or_else(|| f.franchise_id.clone());
-        let initials: String = name.split_whitespace().take(2).filter_map(|w| w.chars().next()).collect();
+        let name = f
+            .franchise_name
+            .clone()
+            .unwrap_or_else(|| f.franchise_id.clone());
+        let initials: String = name
+            .split_whitespace()
+            .take(2)
+            .filter_map(|w| w.chars().next())
+            .collect();
         let years = if f.is_active {
             format!("{} - Present", format::year(f.first_year))
         } else {
@@ -117,7 +144,9 @@ impl TeamsPage {
             .w(px(320.))
             .h_auto()
             .accessibility_label(name.clone())
-            .on_click(self.nav.to(Route::Franchise { id: f.franchise_id.clone() }))
+            .on_click(self.nav.to(Route::Franchise {
+                id: f.franchise_id.clone(),
+            }))
             .child(
                 v_flex()
                     .w_full()
@@ -135,7 +164,11 @@ impl TeamsPage {
                                     .size_10()
                                     .flex_shrink_0()
                                     .rounded(cx.theme().radius)
-                                    .bg(if f.is_active { widgets::brand_navy() } else { cx.theme().muted_foreground })
+                                    .bg(if f.is_active {
+                                        widgets::brand_navy()
+                                    } else {
+                                        cx.theme().muted_foreground
+                                    })
                                     .text_color(white())
                                     .font_bold()
                                     .child(initials),
@@ -163,13 +196,23 @@ impl TeamsPage {
                             .child(format!("{} seasons", format::int(f.total_seasons)))
                             .child(format!("Win % {}", format::rate(f.win_pct)))
                             .when(f.world_series_wins.unwrap_or(0) > 0, |this| {
-                                this.child(Tag::custom(widgets::hof_gold(), rgb(0x1a1a1a).into(), rgb(0xb8962e).into()).xsmall().child(format!("{} WS", f.world_series_wins.unwrap_or(0))))
+                                this.child(
+                                    Tag::custom(
+                                        widgets::hof_gold(),
+                                        rgb(0x1a1a1a).into(),
+                                        rgb(0xb8962e).into(),
+                                    )
+                                    .xsmall()
+                                    .child(format!("{} WS", f.world_series_wins.unwrap_or(0))),
+                                )
                             })
                             .when(f.pennant_wins.unwrap_or(0) > 0, |this| {
-                                this.child(Tag::primary().outline().xsmall().child(match f.pennant_wins.unwrap_or(0) {
-                                    1 => "1 Pennant".to_string(),
-                                    n => format!("{n} Pennants"),
-                                }))
+                                this.child(Tag::primary().outline().xsmall().child(
+                                    match f.pennant_wins.unwrap_or(0) {
+                                        1 => "1 Pennant".to_string(),
+                                        n => format!("{n} Pennants"),
+                                    },
+                                ))
                             }),
                     ),
             )
@@ -179,8 +222,18 @@ impl TeamsPage {
     fn group(&self, title: &str, rows: &[FranchiseSummary], cx: &App) -> AnyElement {
         v_flex()
             .gap_3()
-            .child(div().text_lg().font_semibold().child(format!("{title} ({})", rows.len())))
-            .child(h_flex().gap_3().flex_wrap().children(rows.iter().map(|f| self.card(f, cx))))
+            .child(
+                div()
+                    .text_lg()
+                    .font_semibold()
+                    .child(format!("{title} ({})", rows.len())),
+            )
+            .child(
+                h_flex()
+                    .gap_3()
+                    .flex_wrap()
+                    .children(rows.iter().map(|f| self.card(f, cx))),
+            )
             .into_any_element()
     }
 }
@@ -229,8 +282,18 @@ impl Render for TeamsPage {
             }));
         let filters = widgets::filter_bar(cx)
             .child(widgets::field("League", league_buttons, cx))
-            .child(widgets::field("Name", div().w(px(260.)).child(Input::new(&self.name).small().cleanable(true)), cx))
-            .child(widgets::field("Era", picker::dropdown(&self.era_picker, 160.), cx))
+            .child(widgets::field(
+                "Name",
+                div()
+                    .w(px(260.))
+                    .child(Input::new(&self.name).small().cleanable(true)),
+                cx,
+            ))
+            .child(widgets::field(
+                "Era",
+                picker::dropdown(&self.era_picker, 160.),
+                cx,
+            ))
             .child(
                 Button::new("clear-team-filters")
                     .small()
@@ -243,11 +306,16 @@ impl Render for TeamsPage {
                 widgets::empty_state("No Teams Found", "Try adjusting your search criteria.", cx)
             }
             Loadable::Ready(_) => {
-                let (active, historical): (Vec<_>, Vec<_>) = visible.into_iter().partition(|f| f.is_active);
+                let (active, historical): (Vec<_>, Vec<_>) =
+                    visible.into_iter().partition(|f| f.is_active);
                 v_flex()
                     .gap_6()
-                    .when(!active.is_empty(), |this| this.child(self.group("Active Franchises", &active, cx)))
-                    .when(!historical.is_empty(), |this| this.child(self.group("Historical Franchises", &historical, cx)))
+                    .when(!active.is_empty(), |this| {
+                        this.child(self.group("Active Franchises", &active, cx))
+                    })
+                    .when(!historical.is_empty(), |this| {
+                        this.child(self.group("Historical Franchises", &historical, cx))
+                    })
                     .into_any_element()
             }
             Loadable::Failed(message) => widgets::error_state(
@@ -259,7 +327,13 @@ impl Render for TeamsPage {
         };
         widgets::page_body("teams", &self.scroll).child(
             widgets::page_column()
-                .child(widgets::page_header(None, "Teams & Franchises", subtitle, vec![], cx))
+                .child(widgets::page_header(
+                    None,
+                    "Teams & Franchises",
+                    subtitle,
+                    vec![],
+                    cx,
+                ))
                 .child(filters)
                 .child(body),
         )

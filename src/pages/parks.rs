@@ -54,11 +54,15 @@ impl ParksPage {
                     cx.notify();
                 }
             }),
-            cx.subscribe_in(&state_picker, window, |this, _, event: &PickerEvent, window, cx| {
-                this.state = picker::value_of(event);
-                this.page = 1;
-                this.reload(window, cx);
-            }),
+            cx.subscribe_in(
+                &state_picker,
+                window,
+                |this, _, event: &PickerEvent, window, cx| {
+                    this.state = picker::value_of(event);
+                    this.page = 1;
+                    this.reload(window, cx);
+                },
+            ),
         ];
         let mut page = Self {
             nav,
@@ -77,19 +81,30 @@ impl ParksPage {
 
     fn visible(&self, cx: &App) -> Vec<ParkSummary> {
         let query = self.name.read(cx).value().trim().to_lowercase();
-        let Some(all) = self.parks.ready() else { return vec![] };
+        let Some(all) = self.parks.ready() else {
+            return vec![];
+        };
         all.iter()
             .filter(|p| {
                 query.is_empty()
-                    || p.park_name.as_deref().unwrap_or("").to_lowercase().contains(&query)
-                    || p.city.as_deref().unwrap_or("").to_lowercase().contains(&query)
+                    || p.park_name
+                        .as_deref()
+                        .unwrap_or("")
+                        .to_lowercase()
+                        .contains(&query)
+                    || p.city
+                        .as_deref()
+                        .unwrap_or("")
+                        .to_lowercase()
+                        .contains(&query)
             })
             .cloned()
             .collect()
     }
 
     fn clear(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        self.name.update(cx, |state, cx| state.set_value("", window, cx));
+        self.name
+            .update(cx, |state, cx| state.set_value("", window, cx));
         picker::select_value(&self.state_picker, "", window, cx);
         self.state = None;
         self.page = 1;
@@ -136,11 +151,24 @@ impl Render for ParksPage {
         let page = self.page.min(total_pages.max(1));
         let start = (page as usize - 1) * PAGE_SIZE;
         let rows: Vec<ParkSummary> = visible.into_iter().skip(start).take(PAGE_SIZE).collect();
-        let subtitle = self.parks.ready().map(|_| format!("{} ballparks", format::int(Some(total as i64))).into());
+        let subtitle = self
+            .parks
+            .ready()
+            .map(|_| format!("{} ballparks", format::int(Some(total as i64))).into());
 
         let filters = widgets::filter_bar(cx)
-            .child(widgets::field("Name or City", div().w(px(280.)).child(Input::new(&self.name).small().cleanable(true)), cx))
-            .child(widgets::field("State", picker::dropdown(&self.state_picker, 180.), cx))
+            .child(widgets::field(
+                "Name or City",
+                div()
+                    .w(px(280.))
+                    .child(Input::new(&self.name).small().cleanable(true)),
+                cx,
+            ))
+            .child(widgets::field(
+                "State",
+                picker::dropdown(&self.state_picker, 180.),
+                cx,
+            ))
             .child(
                 Button::new("parks-clear")
                     .small()
@@ -150,16 +178,20 @@ impl Render for ParksPage {
             );
         let nav = self.nav.clone();
         let body: AnyElement = match &self.parks {
-            Loadable::Ready(_) if rows.is_empty() => {
-                widgets::empty_state("No Ballparks Found", "Try a different name, city or state.", cx)
-            }
+            Loadable::Ready(_) if rows.is_empty() => widgets::empty_state(
+                "No Ballparks Found",
+                "Try a different name, city or state.",
+                cx,
+            ),
             Loadable::Ready(_) => {
                 let cols = vec![
                     Col::element("Ballpark", 340., move |p: &ParkSummary, _| {
                         nav.button(
                             SharedString::from(format!("park-{}", p.park_key)),
                             format::text(p.park_name.as_deref()),
-                            Route::Park { key: p.park_key.clone() },
+                            Route::Park {
+                                key: p.park_key.clone(),
+                            },
                         )
                     }),
                     Col::text("Location", 280., |p: &ParkSummary| {
@@ -176,7 +208,12 @@ impl Render for ParksPage {
                 let this = cx.entity().downgrade();
                 v_flex()
                     .gap_3()
-                    .child(widgets::section("Ballparks", cx).child(grid("parks-table", cols, &rows, cx)))
+                    .child(widgets::section("Ballparks", cx).child(grid(
+                        "parks-table",
+                        cols,
+                        &rows,
+                        cx,
+                    )))
                     .child(widgets::pager(
                         "parks-pager",
                         page,
@@ -203,7 +240,13 @@ impl Render for ParksPage {
         };
         widgets::page_body("parks", &self.scroll).child(
             widgets::page_column()
-                .child(widgets::page_header(None, "Ballparks", subtitle, vec![], cx))
+                .child(widgets::page_header(
+                    None,
+                    "Ballparks",
+                    subtitle,
+                    vec![],
+                    cx,
+                ))
                 .child(filters)
                 .child(body),
         )

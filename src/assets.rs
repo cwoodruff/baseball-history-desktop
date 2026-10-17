@@ -8,10 +8,37 @@ use gpui_kit::{AssetSource, Result, SharedString};
 gpui_kit::assets::icon_assets!(
     ExtraIcons,
     [
-        Award, BookA, ChartBar, ChartColumn, ChevronDown, ChevronLeft, ChevronRight, Columns2,
-        DollarSign, ExternalLink, Flag, Github, House, Inbox, Info, Landmark, MapPin, Moon,
-        PanelLeft, RefreshCw, ScrollText, Search, Sun, Trophy, User, Users, ArrowUpDown, X,
-        Calendar, Medal, Star
+        Award,
+        BookA,
+        ChartBar,
+        ChartColumn,
+        ChevronDown,
+        ChevronLeft,
+        ChevronRight,
+        Columns2,
+        DollarSign,
+        ExternalLink,
+        Flag,
+        Github,
+        House,
+        Inbox,
+        Info,
+        Landmark,
+        MapPin,
+        Moon,
+        PanelLeft,
+        RefreshCw,
+        ScrollText,
+        Search,
+        Sun,
+        Trophy,
+        User,
+        Users,
+        ArrowUpDown,
+        X,
+        Calendar,
+        Medal,
+        Star
     ]
 );
 

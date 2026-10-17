@@ -38,7 +38,12 @@ pub struct PostseasonPage {
 }
 
 impl PostseasonPage {
-    pub fn new(year: Option<i32>, nav: Navigator, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        year: Option<i32>,
+        nav: Navigator,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let first = (catalog::LAST_SEASON - YEARS_SHOWN + 1).min(year.unwrap_or(i32::MAX));
         let year_picker = picker::picker(
             picker::years("All Years", first, catalog::LAST_SEASON),
@@ -49,7 +54,11 @@ impl PostseasonPage {
         );
         let round_picker = picker::picker(
             std::iter::once(Opt::any("All Rounds"))
-                .chain(catalog::POSTSEASON_ROUNDS.iter().map(|r| Opt::new(r.value, format!("{} — {}", r.value, r.label))))
+                .chain(
+                    catalog::POSTSEASON_ROUNDS
+                        .iter()
+                        .map(|r| Opt::new(r.value, format!("{} — {}", r.value, r.label))),
+                )
                 .collect(),
             "",
             false,
@@ -57,16 +66,24 @@ impl PostseasonPage {
             cx,
         );
         let subscriptions = vec![
-            cx.subscribe_in(&year_picker, window, |this, _, event: &PickerEvent, window, cx| {
-                this.year = picker::value_of(event).and_then(|v| v.parse().ok());
-                this.page = 1;
-                this.reload(window, cx);
-            }),
-            cx.subscribe_in(&round_picker, window, |this, _, event: &PickerEvent, window, cx| {
-                this.round = picker::value_of(event);
-                this.page = 1;
-                this.reload(window, cx);
-            }),
+            cx.subscribe_in(
+                &year_picker,
+                window,
+                |this, _, event: &PickerEvent, window, cx| {
+                    this.year = picker::value_of(event).and_then(|v| v.parse().ok());
+                    this.page = 1;
+                    this.reload(window, cx);
+                },
+            ),
+            cx.subscribe_in(
+                &round_picker,
+                window,
+                |this, _, event: &PickerEvent, window, cx| {
+                    this.round = picker::value_of(event);
+                    this.page = 1;
+                    this.reload(window, cx);
+                },
+            ),
         ];
         let mut page = Self {
             nav,
@@ -87,7 +104,12 @@ impl PostseasonPage {
     fn set_year(&mut self, year: Option<i32>, window: &mut Window, cx: &mut Context<Self>) {
         self.year = year;
         self.page = 1;
-        picker::select_value(&self.year_picker, &year.map(|y| y.to_string()).unwrap_or_default(), window, cx);
+        picker::select_value(
+            &self.year_picker,
+            &year.map(|y| y.to_string()).unwrap_or_default(),
+            window,
+            cx,
+        );
         self.reload(window, cx);
     }
 
@@ -115,7 +137,11 @@ fn team_button(
             .button(
                 SharedString::from(id),
                 label,
-                Route::TeamSeason { team_id: t.to_string(), lg_id: l.to_string(), year },
+                Route::TeamSeason {
+                    team_id: t.to_string(),
+                    lg_id: l.to_string(),
+                    year,
+                },
             )
             .into_any_element(),
         _ => label.into_any_element(),
@@ -154,8 +180,16 @@ impl Page for PostseasonPage {
 impl Render for PostseasonPage {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let filters = widgets::filter_bar(cx)
-            .child(widgets::field("Year", picker::dropdown(&self.year_picker, 120.), cx))
-            .child(widgets::field("Round", picker::dropdown(&self.round_picker, 280.), cx))
+            .child(widgets::field(
+                "Year",
+                picker::dropdown(&self.year_picker, 120.),
+                cx,
+            ))
+            .child(widgets::field(
+                "Round",
+                picker::dropdown(&self.round_picker, 280.),
+                cx,
+            ))
             .when(self.year.is_some() || self.round.is_some(), |this| {
                 this.child(
                     Button::new("ps-clear")
@@ -166,9 +200,11 @@ impl Render for PostseasonPage {
                 )
             });
         let body: AnyElement = match &self.series {
-            Loadable::Ready(p) if p.data.is_empty() => {
-                widgets::empty_state("No Postseason Data Found", "No series match the selected filters.", cx)
-            }
+            Loadable::Ready(p) if p.data.is_empty() => widgets::empty_state(
+                "No Postseason Data Found",
+                "No series match the selected filters.",
+                cx,
+            ),
             Loadable::Ready(p) => {
                 let this = cx.entity().downgrade();
                 let year_this = this.clone();
@@ -177,41 +213,78 @@ impl Render for PostseasonPage {
                     Col::element("Year", 72., move |s: &PostseasonSeries, ix| {
                         let this = year_this.clone();
                         let year = s.year;
-                        Button::new(SharedString::from(format!("ps-year-{}-{}-{ix}", s.year, s.round)))
-                            .ghost()
-                            .xsmall()
-                            .compact()
-                            .label(s.year.to_string())
-                            .tooltip(format!("Show only {year}"))
-                            .on_click(move |_, window, cx| {
-                                this.update(cx, |this, cx| this.set_year(Some(year), window, cx)).ok();
-                            })
+                        Button::new(SharedString::from(format!(
+                            "ps-year-{}-{}-{ix}",
+                            s.year, s.round
+                        )))
+                        .ghost()
+                        .xsmall()
+                        .compact()
+                        .label(s.year.to_string())
+                        .tooltip(format!("Show only {year}"))
+                        .on_click(move |_, window, cx| {
+                            this.update(cx, |this, cx| this.set_year(Some(year), window, cx))
+                                .ok();
+                        })
                     }),
                     Col::element("Round", 220., |s: &PostseasonSeries, _| {
                         let label = catalog::round_label(&s.round);
                         if s.round == "WS" {
-                            Tag::custom(widgets::hof_gold(), rgb(0x1a1a1a).into(), rgb(0xb8962e).into()).xsmall().child(label)
+                            Tag::custom(
+                                widgets::hof_gold(),
+                                rgb(0x1a1a1a).into(),
+                                rgb(0xb8962e).into(),
+                            )
+                            .xsmall()
+                            .child(label)
                         } else {
                             Tag::secondary().xsmall().child(label)
                         }
                     }),
                     Col::element("Winner", 160., move |s: &PostseasonSeries, ix| {
-                        team_button(&nav_w, format!("ps-w-{}-{}-{ix}", s.year, s.round), s.winner_team_id.as_deref(), s.winner_lg_id.as_deref(), s.year)
+                        team_button(
+                            &nav_w,
+                            format!("ps-w-{}-{}-{ix}", s.year, s.round),
+                            s.winner_team_id.as_deref(),
+                            s.winner_lg_id.as_deref(),
+                            s.year,
+                        )
                     }),
-                    Col::num("Result", 80., |s: &PostseasonSeries| match s.ties.unwrap_or(0) {
-                        0 => format!("{}-{}", s.wins.unwrap_or(0), s.losses.unwrap_or(0)),
-                        t => format!("{}-{}-{t}", s.wins.unwrap_or(0), s.losses.unwrap_or(0)),
+                    Col::num("Result", 80., |s: &PostseasonSeries| {
+                        match s.ties.unwrap_or(0) {
+                            0 => format!("{}-{}", s.wins.unwrap_or(0), s.losses.unwrap_or(0)),
+                            t => format!("{}-{}-{t}", s.wins.unwrap_or(0), s.losses.unwrap_or(0)),
+                        }
                     }),
                     Col::element("Loser", 160., move |s: &PostseasonSeries, ix| {
-                        team_button(&nav_l, format!("ps-l-{}-{}-{ix}", s.year, s.round), s.loser_team_id.as_deref(), s.loser_lg_id.as_deref(), s.year)
+                        team_button(
+                            &nav_l,
+                            format!("ps-l-{}-{}-{ix}", s.year, s.round),
+                            s.loser_team_id.as_deref(),
+                            s.loser_lg_id.as_deref(),
+                            s.year,
+                        )
                     }),
                 ];
                 let gold = widgets::hof_gold().opacity(0.15);
                 v_flex()
                     .gap_3()
                     .child(
-                        widgets::section_with("Series", widgets::note(format!("{} series", format::int(Some(p.total_count as i64))), cx), cx)
-                            .child(grid_with_row_style("postseason-table", cols, &p.data, |s| (s.round == "WS").then_some(gold), cx)),
+                        widgets::section_with(
+                            "Series",
+                            widgets::note(
+                                format!("{} series", format::int(Some(p.total_count as i64))),
+                                cx,
+                            ),
+                            cx,
+                        )
+                        .child(grid_with_row_style(
+                            "postseason-table",
+                            cols,
+                            &p.data,
+                            |s| (s.round == "WS").then_some(gold),
+                            cx,
+                        )),
                     )
                     .child(widgets::pager(
                         "ps-pager",
@@ -238,7 +311,13 @@ impl Render for PostseasonPage {
         };
         widgets::page_body("postseason", &self.scroll).child(
             widgets::page_column()
-                .child(widgets::page_header(Some("Stats"), "Postseason Results", None, vec![], cx))
+                .child(widgets::page_header(
+                    Some("Stats"),
+                    "Postseason Results",
+                    None,
+                    vec![],
+                    cx,
+                ))
                 .child(filters)
                 .child(body)
                 .child(h_flex()),

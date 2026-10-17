@@ -5,6 +5,7 @@
 //! fit. Cells can hold Buttons, which keeps in-app navigation keyboard
 //! reachable and announces the right role.
 
+use gpui_kit::assets::IconName;
 use gpui_kit::component::{
     ActiveTheme as _, Icon, Selectable as _, Sizable as _, StyledExt as _,
     button::{Button, ButtonVariants as _},
@@ -13,7 +14,6 @@ use gpui_kit::component::{
 };
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
-use gpui_kit::assets::IconName;
 
 type CellFn<'a, T> = Box<dyn Fn(&T, usize) -> AnyElement + 'a>;
 type ClickFn = Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
@@ -100,8 +100,7 @@ pub fn grid<T>(
     rows: &[T],
     cx: &App,
 ) -> AnyElement {
-    grid_with_row_style(id, columns, rows, |_| None, cx)
-    .into_any_element()
+    grid_with_row_style(id, columns, rows, |_| None, cx).into_any_element()
 }
 
 /// Like [`grid`], with an optional background per row (e.g. World Series rows).
@@ -130,7 +129,10 @@ pub fn grid_with_row_style<T>(
         let name = column.name.clone();
         // Table cells default to a 100px minimum; pin both header and body
         // cells to the column width so they line up.
-        let mut head = TableHead::new().w(column.width).min_w(column.width).flex_none();
+        let mut head = TableHead::new()
+            .w(column.width)
+            .min_w(column.width)
+            .flex_none();
         if column.numeric {
             head = head.text_right();
         }
@@ -159,7 +161,11 @@ pub fn grid_with_row_style<T>(
         TableRow::new()
             .when_some(row_bg(row), |this, bg| this.bg(bg))
             .children(columns.iter().map(|column| {
-                let mut cell = TableCell::new().w(column.width).min_w(column.width).flex_none().overflow_hidden();
+                let mut cell = TableCell::new()
+                    .w(column.width)
+                    .min_w(column.width)
+                    .flex_none()
+                    .overflow_hidden();
                 if column.numeric {
                     cell = cell.text_right().font_family(mono.clone());
                 }
@@ -192,5 +198,5 @@ pub fn grid_with_row_style<T>(
                     .child("No rows."),
             )
         })
-    .into_any_element()
+        .into_any_element()
 }

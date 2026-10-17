@@ -53,7 +53,11 @@ impl AwardsPage {
             cx,
         );
         let year_picker = picker::picker(
-            picker::years("All Years", catalog::LAST_SEASON - YEARS_SHOWN + 1, catalog::LAST_SEASON),
+            picker::years(
+                "All Years",
+                catalog::LAST_SEASON - YEARS_SHOWN + 1,
+                catalog::LAST_SEASON,
+            ),
             "",
             true,
             window,
@@ -61,7 +65,11 @@ impl AwardsPage {
         );
         let league_picker = picker::picker(
             std::iter::once(Opt::any("All Leagues"))
-                .chain(catalog::AWARD_LEAGUES.iter().map(|l| Opt::new(l.value, l.label)))
+                .chain(
+                    catalog::AWARD_LEAGUES
+                        .iter()
+                        .map(|l| Opt::new(l.value, l.label)),
+                )
                 .collect(),
             "",
             false,
@@ -69,18 +77,30 @@ impl AwardsPage {
             cx,
         );
         let subscriptions = vec![
-            cx.subscribe_in(&award_picker, window, |this, _, event: &PickerEvent, window, cx| {
-                this.award = picker::value_of(event);
-                this.refetch(window, cx);
-            }),
-            cx.subscribe_in(&year_picker, window, |this, _, event: &PickerEvent, window, cx| {
-                this.year = picker::value_of(event).and_then(|v| v.parse().ok());
-                this.refetch(window, cx);
-            }),
-            cx.subscribe_in(&league_picker, window, |this, _, event: &PickerEvent, window, cx| {
-                this.league = picker::value_of(event);
-                this.refetch(window, cx);
-            }),
+            cx.subscribe_in(
+                &award_picker,
+                window,
+                |this, _, event: &PickerEvent, window, cx| {
+                    this.award = picker::value_of(event);
+                    this.refetch(window, cx);
+                },
+            ),
+            cx.subscribe_in(
+                &year_picker,
+                window,
+                |this, _, event: &PickerEvent, window, cx| {
+                    this.year = picker::value_of(event).and_then(|v| v.parse().ok());
+                    this.refetch(window, cx);
+                },
+            ),
+            cx.subscribe_in(
+                &league_picker,
+                window,
+                |this, _, event: &PickerEvent, window, cx| {
+                    this.league = picker::value_of(event);
+                    this.refetch(window, cx);
+                },
+            ),
         ];
         let mut page = Self {
             nav,
@@ -108,7 +128,14 @@ impl AwardsPage {
     }
 
     /// Shows the voting race for one award, year and league.
-    fn view_race(&mut self, award: String, year: i32, league: String, window: &mut Window, cx: &mut Context<Self>) {
+    fn view_race(
+        &mut self,
+        award: String,
+        year: i32,
+        league: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         picker::select_value(&self.award_picker, &award, window, cx);
         picker::select_value(&self.year_picker, &year.to_string(), window, cx);
         picker::select_value(&self.league_picker, &league, window, cx);
@@ -135,9 +162,19 @@ impl AwardsPage {
         let body: AnyElement = match &self.voting {
             Loadable::Ready(Some(voting)) if !voting.votes.is_empty() => {
                 let mut votes = voting.votes.clone();
-                votes.sort_by(|a, b| b.points_won.partial_cmp(&a.points_won).unwrap_or(std::cmp::Ordering::Equal));
+                votes.sort_by(|a, b| {
+                    b.points_won
+                        .partial_cmp(&a.points_won)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                });
                 let winner = votes.first().map(|v| v.player_id.clone());
-                let rank_of = |v: &AwardVote| votes.iter().position(|o| o.player_id == v.player_id).unwrap_or(0) + 1;
+                let rank_of = |v: &AwardVote| {
+                    votes
+                        .iter()
+                        .position(|o| o.player_id == v.player_id)
+                        .unwrap_or(0)
+                        + 1
+                };
                 let nav = self.nav.clone();
                 let winner_for_cell = winner.clone();
                 let cols = vec![
@@ -153,19 +190,29 @@ impl AwardsPage {
                                 false,
                                 &nav,
                             ))
-                            .when(winner_for_cell.as_deref() == Some(v.player_id.as_str()), |this| {
-                                this.child(Tag::success().xsmall().child("Winner"))
-                            })
+                            .when(
+                                winner_for_cell.as_deref() == Some(v.player_id.as_str()),
+                                |this| this.child(Tag::success().xsmall().child("Winner")),
+                            )
                     }),
-                    Col::num("Points", 72., |v: &AwardVote| format::decimal_trim(v.points_won)),
-                    Col::num("Max", 64., |v: &AwardVote| format::decimal_trim(v.points_max)),
-                    Col::num("1st Place", 80., |v: &AwardVote| format::text(v.votes_first.as_deref())),
+                    Col::num("Points", 72., |v: &AwardVote| {
+                        format::decimal_trim(v.points_won)
+                    }),
+                    Col::num("Max", 64., |v: &AwardVote| {
+                        format::decimal_trim(v.points_max)
+                    }),
+                    Col::num("1st Place", 80., |v: &AwardVote| {
+                        format::text(v.votes_first.as_deref())
+                    }),
                     Col::num("Share", 72., |v: &AwardVote| format::percent(v.vote_share)),
                     Col::element("Vote Share", 200., |v: &AwardVote, _| {
                         div().w(px(180.)).child(
                             Progress::new(SharedString::from(format!("share-{}", v.player_id)))
                                 .value(v.vote_share.unwrap_or(0.) as f32)
-                                .accessibility_label(format!("{} vote share", format::percent(v.vote_share))),
+                                .accessibility_label(format!(
+                                    "{} vote share",
+                                    format::percent(v.vote_share)
+                                )),
                         )
                     }),
                 ];
@@ -180,7 +227,10 @@ impl AwardsPage {
             }
             Loadable::Ready(_) => div()
                 .p_4()
-                .child(widgets::note("No voting results are on record for this award, year and league.", cx))
+                .child(widgets::note(
+                    "No voting results are on record for this award, year and league.",
+                    cx,
+                ))
                 .into_any_element(),
             Loadable::Failed(message) => widgets::error_state(
                 "voting-error",
@@ -199,13 +249,20 @@ impl Page for AwardsPage {
     }
 
     fn reload(&mut self, _: &mut Window, cx: &mut Context<Self>) {
-        let (award, year, league, page) = (self.award.clone(), self.year, self.league.clone(), self.page);
+        let (award, year, league, page) = (
+            self.award.clone(),
+            self.year,
+            self.league.clone(),
+            self.page,
+        );
         self.winners = Loadable::Loading;
         {
             let (award, league) = (award.clone(), league.clone());
             self._winners_task = Some(loader::fetch(
                 cx,
-                move |api| api.award_winners(award.as_deref(), year, league.as_deref(), page, PAGE_SIZE),
+                move |api| {
+                    api.award_winners(award.as_deref(), year, league.as_deref(), page, PAGE_SIZE)
+                },
                 |this: &mut Self, result, _| this.winners = Loadable::from_result(result),
             ));
         }
@@ -230,9 +287,21 @@ impl Page for AwardsPage {
 impl Render for AwardsPage {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let filters = widgets::filter_bar(cx)
-            .child(widgets::field("Award", picker::dropdown(&self.award_picker, 280.), cx))
-            .child(widgets::field("Year", picker::dropdown(&self.year_picker, 120.), cx))
-            .child(widgets::field("League", picker::dropdown(&self.league_picker, 140.), cx))
+            .child(widgets::field(
+                "Award",
+                picker::dropdown(&self.award_picker, 280.),
+                cx,
+            ))
+            .child(widgets::field(
+                "Year",
+                picker::dropdown(&self.year_picker, 120.),
+                cx,
+            ))
+            .child(widgets::field(
+                "League",
+                picker::dropdown(&self.league_picker, 140.),
+                cx,
+            ))
             .child(
                 Button::new("awards-clear")
                     .small()
@@ -243,9 +312,11 @@ impl Render for AwardsPage {
         let voting = self.render_voting(cx);
         let nav = self.nav.clone();
         let body: AnyElement = match &self.winners {
-            Loadable::Ready(p) if p.data.is_empty() => {
-                widgets::empty_state("No Awards Found", "No award winners match the selected filters.", cx)
-            }
+            Loadable::Ready(p) if p.data.is_empty() => widgets::empty_state(
+                "No Awards Found",
+                "No award winners match the selected filters.",
+                cx,
+            ),
             Loadable::Ready(p) => {
                 let this = cx.entity().downgrade();
                 let race_this = this.clone();
@@ -263,22 +334,39 @@ impl Render for AwardsPage {
                         Tag::primary().outline().xsmall().child(w.award_id.clone())
                     }),
                     Col::text("Year", 64., |w: &AwardWinner| w.year.to_string()),
-                    Col::text("League", 72., |w: &AwardWinner| format::text(w.lg_id.as_deref())),
-                    Col::text("Notes", 120., |w: &AwardWinner| format::text(w.notes.as_deref())),
+                    Col::text("League", 72., |w: &AwardWinner| {
+                        format::text(w.lg_id.as_deref())
+                    }),
+                    Col::text("Notes", 120., |w: &AwardWinner| {
+                        format::text(w.notes.as_deref())
+                    }),
                     Col::element("", 120., move |w: &AwardWinner, ix| {
-                        let has_race = catalog::VOTED_AWARDS.contains(&w.award_id.as_str()) && w.lg_id.is_some();
-                        let (award, year, league) = (w.award_id.clone(), w.year, w.lg_id.clone().unwrap_or_default());
+                        let has_race = catalog::VOTED_AWARDS.contains(&w.award_id.as_str())
+                            && w.lg_id.is_some();
+                        let (award, year, league) = (
+                            w.award_id.clone(),
+                            w.year,
+                            w.lg_id.clone().unwrap_or_default(),
+                        );
                         let this = race_this.clone();
                         div().when(has_race, |d| {
                             d.child(
-                                Button::new(SharedString::from(format!("race-{}-{}-{ix}", w.player_id, w.year)))
-                                    .xsmall()
-                                    .outline()
-                                    .label("View Race")
-                                    .on_click(move |_, window, cx| {
+                                Button::new(SharedString::from(format!(
+                                    "race-{}-{}-{ix}",
+                                    w.player_id, w.year
+                                )))
+                                .xsmall()
+                                .outline()
+                                .label("View Race")
+                                .on_click(
+                                    move |_, window, cx| {
                                         let (award, league) = (award.clone(), league.clone());
-                                        this.update(cx, |this, cx| this.view_race(award, year, league, window, cx)).ok();
-                                    }),
+                                        this.update(cx, |this, cx| {
+                                            this.view_race(award, year, league, window, cx)
+                                        })
+                                        .ok();
+                                    },
+                                ),
                             )
                         })
                     }),
@@ -286,8 +374,21 @@ impl Render for AwardsPage {
                 v_flex()
                     .gap_3()
                     .child(
-                        widgets::section_with("Award Winners", widgets::note(format!("{} awards", format::int(Some(p.total_count as i64))), cx), cx)
-                            .child(grid_with_row_style("winners-table", cols, &p.data, |_| None, cx)),
+                        widgets::section_with(
+                            "Award Winners",
+                            widgets::note(
+                                format!("{} awards", format::int(Some(p.total_count as i64))),
+                                cx,
+                            ),
+                            cx,
+                        )
+                        .child(grid_with_row_style(
+                            "winners-table",
+                            cols,
+                            &p.data,
+                            |_| None,
+                            cx,
+                        )),
                     )
                     .child(widgets::pager(
                         "awards-pager",
@@ -314,7 +415,13 @@ impl Render for AwardsPage {
         };
         widgets::page_body("awards", &self.scroll).child(
             widgets::page_column()
-                .child(widgets::page_header(Some("Stats"), "Awards & Voting", Some("Player awards and the voting races behind them.".into()), vec![], cx))
+                .child(widgets::page_header(
+                    Some("Stats"),
+                    "Awards & Voting",
+                    Some("Player awards and the voting races behind them.".into()),
+                    vec![],
+                    cx,
+                ))
                 .child(filters)
                 .children(voting)
                 .child(body),

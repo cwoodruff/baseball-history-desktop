@@ -67,7 +67,11 @@ impl HallOfFamePage {
         );
         let category_picker = picker::picker(
             std::iter::once(Opt::any("All Categories"))
-                .chain(catalog::HOF_CATEGORY_VALUES.iter().map(|c| Opt::new(*c, *c)))
+                .chain(
+                    catalog::HOF_CATEGORY_VALUES
+                        .iter()
+                        .map(|c| Opt::new(*c, *c)),
+                )
                 .collect(),
             category.as_deref().unwrap_or(""),
             false,
@@ -75,16 +79,24 @@ impl HallOfFamePage {
             cx,
         );
         let subscriptions = vec![
-            cx.subscribe_in(&year_picker, window, |this, _, event: &PickerEvent, window, cx| {
-                this.year = picker::value_of(event).and_then(|v| v.parse().ok());
-                this.page = 1;
-                this.load_inductees(window, cx);
-            }),
-            cx.subscribe_in(&category_picker, window, |this, _, event: &PickerEvent, window, cx| {
-                this.category = picker::value_of(event);
-                this.page = 1;
-                this.load_inductees(window, cx);
-            }),
+            cx.subscribe_in(
+                &year_picker,
+                window,
+                |this, _, event: &PickerEvent, window, cx| {
+                    this.year = picker::value_of(event).and_then(|v| v.parse().ok());
+                    this.page = 1;
+                    this.load_inductees(window, cx);
+                },
+            ),
+            cx.subscribe_in(
+                &category_picker,
+                window,
+                |this, _, event: &PickerEvent, window, cx| {
+                    this.category = picker::value_of(event);
+                    this.page = 1;
+                    this.load_inductees(window, cx);
+                },
+            ),
         ];
         let mut page = Self {
             nav,
@@ -119,9 +131,23 @@ impl HallOfFamePage {
         cx.notify();
     }
 
-    fn set_category(&mut self, category: Option<&str>, window: &mut Window, cx: &mut Context<Self>) {
-        let category = if self.category.as_deref() == category { None } else { category.map(str::to_string) };
-        picker::select_value(&self.category_picker, category.as_deref().unwrap_or(""), window, cx);
+    fn set_category(
+        &mut self,
+        category: Option<&str>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let category = if self.category.as_deref() == category {
+            None
+        } else {
+            category.map(str::to_string)
+        };
+        picker::select_value(
+            &self.category_picker,
+            category.as_deref().unwrap_or(""),
+            window,
+            cx,
+        );
         self.category = category;
         self.page = 1;
         self.load_inductees(window, cx);
@@ -137,7 +163,11 @@ impl HallOfFamePage {
     }
 
     fn render_banner(&self, cx: &App) -> AnyElement {
-        let total = self.totals.ready().map(|(t, _)| format::int(Some(*t as i64))).unwrap_or_else(|| "…".into());
+        let total = self
+            .totals
+            .ready()
+            .map(|(t, _)| format::int(Some(*t as i64)))
+            .unwrap_or_else(|| "…".into());
         v_flex()
             .w_full()
             .p_6()
@@ -166,27 +196,44 @@ impl HallOfFamePage {
             .w_full()
             .gap_3()
             .flex_wrap()
-            .children(catalog::HOF_CATEGORIES.iter().enumerate().map(|(ix, choice)| {
-                let selected = self.category.as_deref() == Some(choice.value);
-                let count = counts.as_ref().and_then(|c| c.get(ix)).map(|n| format::int(Some(*n as i64))).unwrap_or_else(|| "…".into());
-                let value = choice.value;
-                Button::new(SharedString::from(format!("hof-cat-{ix}")))
-                    .outline()
-                    .flex_1()
-                    .min_w(px(160.))
-                    .h_auto()
-                    .selected(selected)
-                    .accessibility_label(format!("Show {}", choice.label))
-                    .on_click(cx.listener(move |this, _, window, cx| this.set_category(Some(value), window, cx)))
-                    .child(
-                        v_flex()
-                            .w_full()
-                            .py_2()
-                            .items_center()
-                            .child(div().text_2xl().font_bold().text_color(cx.theme().primary).child(count))
-                            .child(div().text_sm().child(choice.label)),
-                    )
-            }))
+            .children(
+                catalog::HOF_CATEGORIES
+                    .iter()
+                    .enumerate()
+                    .map(|(ix, choice)| {
+                        let selected = self.category.as_deref() == Some(choice.value);
+                        let count = counts
+                            .as_ref()
+                            .and_then(|c| c.get(ix))
+                            .map(|n| format::int(Some(*n as i64)))
+                            .unwrap_or_else(|| "…".into());
+                        let value = choice.value;
+                        Button::new(SharedString::from(format!("hof-cat-{ix}")))
+                            .outline()
+                            .flex_1()
+                            .min_w(px(160.))
+                            .h_auto()
+                            .selected(selected)
+                            .accessibility_label(format!("Show {}", choice.label))
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                this.set_category(Some(value), window, cx)
+                            }))
+                            .child(
+                                v_flex()
+                                    .w_full()
+                                    .py_2()
+                                    .items_center()
+                                    .child(
+                                        div()
+                                            .text_2xl()
+                                            .font_bold()
+                                            .text_color(cx.theme().primary)
+                                            .child(count),
+                                    )
+                                    .child(div().text_sm().child(choice.label)),
+                            )
+                    }),
+            )
             .into_any_element()
     }
 }
@@ -206,7 +253,10 @@ impl Page for HallOfFamePage {
                 let total = api.hall_of_fame(None, None, 1, 1)?.total_count;
                 let mut per = Vec::new();
                 for choice in catalog::HOF_CATEGORIES {
-                    per.push(api.hall_of_fame(None, Some(choice.value), 1, 1)?.total_count);
+                    per.push(
+                        api.hall_of_fame(None, Some(choice.value), 1, 1)?
+                            .total_count,
+                    );
                 }
                 Ok((total, per))
             },
@@ -218,8 +268,16 @@ impl Page for HallOfFamePage {
 impl Render for HallOfFamePage {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let filters = widgets::filter_bar(cx)
-            .child(widgets::field("Induction Year", picker::dropdown(&self.year_picker, 140.), cx))
-            .child(widgets::field("Category", picker::dropdown(&self.category_picker, 200.), cx))
+            .child(widgets::field(
+                "Induction Year",
+                picker::dropdown(&self.year_picker, 140.),
+                cx,
+            ))
+            .child(widgets::field(
+                "Category",
+                picker::dropdown(&self.category_picker, 200.),
+                cx,
+            ))
             .when(self.year.is_some() || self.category.is_some(), |this| {
                 this.child(
                     Button::new("hof-clear")
@@ -247,16 +305,36 @@ impl Render for HallOfFamePage {
                             &nav,
                         )
                     }),
-                    Col::text("Year", 64., |h: &HallOfFamer| format::year(h.induction_year)),
-                    Col::element("Category", 150., |h: &HallOfFamer, _| category_tag(h.category.as_deref())),
-                    Col::text("Voted By", 260., |h: &HallOfFamer| format::text(h.voted_by.as_deref())),
-                    Col::num("Vote %", 80., |h: &HallOfFamer| format::percent(h.vote_percentage)),
-                    Col::text("Career", 120., |h: &HallOfFamer| format::year_span(h.debut_year, h.final_year)),
+                    Col::text("Year", 64., |h: &HallOfFamer| {
+                        format::year(h.induction_year)
+                    }),
+                    Col::element("Category", 150., |h: &HallOfFamer, _| {
+                        category_tag(h.category.as_deref())
+                    }),
+                    Col::text("Voted By", 260., |h: &HallOfFamer| {
+                        format::text(h.voted_by.as_deref())
+                    }),
+                    Col::num("Vote %", 80., |h: &HallOfFamer| {
+                        format::percent(h.vote_percentage)
+                    }),
+                    Col::text("Career", 120., |h: &HallOfFamer| {
+                        format::year_span(h.debut_year, h.final_year)
+                    }),
                 ];
                 let this = cx.entity().downgrade();
                 v_flex()
                     .gap_3()
-                    .child(widgets::section_with("Inductees", widgets::note(format!("{} inductees", format::int(Some(p.total_count as i64))), cx), cx).child(grid("hof-table", cols, &p.data, cx)))
+                    .child(
+                        widgets::section_with(
+                            "Inductees",
+                            widgets::note(
+                                format!("{} inductees", format::int(Some(p.total_count as i64))),
+                                cx,
+                            ),
+                            cx,
+                        )
+                        .child(grid("hof-table", cols, &p.data, cx)),
+                    )
                     .child(widgets::pager(
                         "hof-pager",
                         p.page,

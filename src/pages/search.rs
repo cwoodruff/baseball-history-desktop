@@ -45,23 +45,30 @@ impl SearchPage {
             state
         });
         input.update(cx, |state, cx| state.focus(window, cx));
-        let subscription = cx.subscribe_in(&input, window, |this, state, event: &InputEvent, window, cx| match event {
-            InputEvent::Change => {
-                this.query = state.read(cx).value().trim().to_string();
-                this.page = 1;
-                // Debounce typing like the web search box.
-                this._task = Some(cx.spawn_in(window, async move |this, cx| {
-                    cx.background_executor().timer(Duration::from_millis(300)).await;
-                    this.update_in(cx, |this, window, cx| this.reload(window, cx)).ok();
-                }));
-            }
-            InputEvent::PressEnter { .. } => {
-                this.query = state.read(cx).value().trim().to_string();
-                this.page = 1;
-                this.reload(window, cx);
-            }
-            _ => {}
-        });
+        let subscription = cx.subscribe_in(
+            &input,
+            window,
+            |this, state, event: &InputEvent, window, cx| match event {
+                InputEvent::Change => {
+                    this.query = state.read(cx).value().trim().to_string();
+                    this.page = 1;
+                    // Debounce typing like the web search box.
+                    this._task = Some(cx.spawn_in(window, async move |this, cx| {
+                        cx.background_executor()
+                            .timer(Duration::from_millis(300))
+                            .await;
+                        this.update_in(cx, |this, window, cx| this.reload(window, cx))
+                            .ok();
+                    }));
+                }
+                InputEvent::PressEnter { .. } => {
+                    this.query = state.read(cx).value().trim().to_string();
+                    this.page = 1;
+                    this.reload(window, cx);
+                }
+                _ => {}
+            },
+        );
         let mut page = Self {
             nav,
             scroll: ScrollHandle::new(),
@@ -79,7 +86,11 @@ impl SearchPage {
 
 impl Page for SearchPage {
     fn title(&self, _: &App) -> SharedString {
-        if self.query.is_empty() { "Search".into() } else { format!("Search: {}", self.query).into() }
+        if self.query.is_empty() {
+            "Search".into()
+        } else {
+            format!("Search: {}", self.query).into()
+        }
     }
 
     fn reload(&mut self, _: &mut Window, cx: &mut Context<Self>) {
@@ -108,12 +119,18 @@ impl Render for SearchPage {
                 .prefix(gpui_kit::component::Icon::new(IconName::Search).small()),
         );
         let body: AnyElement = match &self.results {
-            Loadable::Idle => widgets::note("Enter at least two characters to search players and teams.", cx),
+            Loadable::Idle => widgets::note(
+                "Enter at least two characters to search players and teams.",
+                cx,
+            ),
             Loadable::Ready(r) if r.players.is_empty() && r.franchises.is_empty() => v_flex()
                 .gap_3()
                 .child(widgets::empty_state(
                     "No Results",
-                    &format!("No results found for “{}”. Check the spelling or try just a last name.", self.query),
+                    &format!(
+                        "No results found for “{}”. Check the spelling or try just a last name.",
+                        self.query
+                    ),
                     cx,
                 ))
                 .child(
@@ -128,7 +145,13 @@ impl Render for SearchPage {
             Loadable::Ready(r) => {
                 let total_pages = r.players.len().div_ceil(PAGE_SIZE) as u32;
                 let page = self.page.min(total_pages.max(1));
-                let rows: Vec<SearchPlayer> = r.players.iter().skip((page as usize - 1) * PAGE_SIZE).take(PAGE_SIZE).cloned().collect();
+                let rows: Vec<SearchPlayer> = r
+                    .players
+                    .iter()
+                    .skip((page as usize - 1) * PAGE_SIZE)
+                    .take(PAGE_SIZE)
+                    .cloned()
+                    .collect();
                 let nav = self.nav.clone();
                 let player_cols = vec![
                     Col::element("Player", 320., move |p: &SearchPlayer, _| {
@@ -140,21 +163,33 @@ impl Render for SearchPage {
                             &nav,
                         )
                     }),
-                    Col::text("Career", 140., |p: &SearchPlayer| format::year_span(p.debut_year, p.final_year)),
+                    Col::text("Career", 140., |p: &SearchPlayer| {
+                        format::year_span(p.debut_year, p.final_year)
+                    }),
                 ];
                 let nav = self.nav.clone();
                 let team_cols = vec![
                     Col::element("Team", 320., move |f: &SearchFranchise, _| {
                         nav.button(
                             SharedString::from(format!("sr-team-{}", f.franchise_id)),
-                            f.franchise_name.clone().unwrap_or_else(|| f.franchise_id.clone()),
-                            Route::Franchise { id: f.franchise_id.clone() },
+                            f.franchise_name
+                                .clone()
+                                .unwrap_or_else(|| f.franchise_id.clone()),
+                            Route::Franchise {
+                                id: f.franchise_id.clone(),
+                            },
                         )
                     }),
                     Col::text("Status", 160., |f: &SearchFranchise| {
-                        if f.is_active { "Active Franchise".into() } else { "Historical Franchise".into() }
+                        if f.is_active {
+                            "Active Franchise".into()
+                        } else {
+                            "Historical Franchise".into()
+                        }
                     }),
-                    Col::text("Years", 120., |f: &SearchFranchise| format::year_span(f.first_year, f.last_year)),
+                    Col::text("Years", 120., |f: &SearchFranchise| {
+                        format::year_span(f.first_year, f.last_year)
+                    }),
                 ];
                 let more = r.total_player_count as usize > r.players.len();
                 let this = cx.entity().downgrade();
@@ -200,7 +235,13 @@ impl Render for SearchPage {
         };
         widgets::page_body("search", &self.scroll).child(
             widgets::page_column()
-                .child(widgets::page_header(Some("Tools"), "Search", None, vec![], cx))
+                .child(widgets::page_header(
+                    Some("Tools"),
+                    "Search",
+                    None,
+                    vec![],
+                    cx,
+                ))
                 .child(input)
                 .child(body),
         )

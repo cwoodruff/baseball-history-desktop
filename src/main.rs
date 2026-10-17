@@ -1,6 +1,9 @@
 //! Baseball History: a desktop client for the Baseball History Project API.
 
-use baseball_history_desktop::{theme, workspace::{self, Workspace}};
+use baseball_history_desktop::{
+    theme,
+    workspace::{self, Workspace},
+};
 use gpui_kit::component::{ThemeMode, TitleBar};
 use gpui_kit::*;
 

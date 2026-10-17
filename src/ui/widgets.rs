@@ -1,5 +1,6 @@
 //! Small presentational building blocks shared by every page.
 
+use gpui_kit::assets::IconName;
 use gpui_kit::component::{
     ActiveTheme as _, Icon, Sizable as _, StyledExt as _,
     alert::Alert,
@@ -11,7 +12,6 @@ use gpui_kit::component::{
 };
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
-use gpui_kit::assets::IconName;
 
 use crate::nav::Navigator;
 use crate::route::{ReferencePage, Route};
@@ -65,7 +65,7 @@ pub fn page_header(
                     .child(subtitle),
             )
         })
-    .into_any_element()
+        .into_any_element()
 }
 
 /// A bordered card with a heading, used for every titled block of content.
@@ -135,7 +135,7 @@ pub fn stat_box(label: &str, value: impl Into<SharedString>, cx: &App) -> AnyEle
                 .child(label.to_string()),
         )
         .child(div().text_lg().font_bold().truncate().child(value.into()))
-    .into_any_element()
+        .into_any_element()
 }
 
 /// A wrapping row of stat boxes.
@@ -143,27 +143,35 @@ pub fn stat_row(items: Vec<(&str, String)>, cx: &App) -> AnyElement {
     h_flex()
         .w_full()
         .gap_3()
-        .children(items.into_iter().map(|(label, value)| stat_box(label, value, cx)))
-    .into_any_element()
+        .children(
+            items
+                .into_iter()
+                .map(|(label, value)| stat_box(label, value, cx)),
+        )
+        .into_any_element()
 }
 
 /// A label/value list, used for biographical facts.
 pub fn facts(rows: Vec<(&str, String)>, cx: &App) -> AnyElement {
-    v_flex().px_4().py_3().gap_2().children(rows.into_iter().map(|(label, value)| {
-        h_flex()
-            .gap_3()
-            .items_start()
-            .child(
-                div()
-                    .w(px(96.))
-                    .flex_shrink_0()
-                    .text_sm()
-                    .text_color(cx.theme().muted_foreground)
-                    .child(label.to_string()),
-            )
-            .child(div().flex_1().min_w_0().text_sm().child(value))
-    }))
-    .into_any_element()
+    v_flex()
+        .px_4()
+        .py_3()
+        .gap_2()
+        .children(rows.into_iter().map(|(label, value)| {
+            h_flex()
+                .gap_3()
+                .items_start()
+                .child(
+                    div()
+                        .w(px(96.))
+                        .flex_shrink_0()
+                        .text_sm()
+                        .text_color(cx.theme().muted_foreground)
+                        .child(label.to_string()),
+                )
+                .child(div().flex_1().min_w_0().text_sm().child(value))
+        }))
+        .into_any_element()
 }
 
 /// The gold "HOF" marker shown next to Hall of Famers.
@@ -196,9 +204,13 @@ pub fn partial_record_chip(id: impl Into<ElementId>, nav: &Navigator) -> AnyElem
         .label("Partial record")
         .tooltip(format!("{PARTIAL_RECORD_HELP} Click to learn why."))
         .on_click(move |_, window, cx| {
-            nav.go(Route::Reference(ReferencePage::SurvivingRecords), window, cx)
+            nav.go(
+                Route::Reference(ReferencePage::SurvivingRecords),
+                window,
+                cx,
+            )
         })
-    .into_any_element()
+        .into_any_element()
 }
 
 /// The compact dagger used in dense lists for partial records.
@@ -208,7 +220,7 @@ pub fn partial_dagger(cx: &App) -> AnyElement {
         .font_bold()
         .text_color(cx.theme().warning)
         .child("†")
-    .into_any_element()
+        .into_any_element()
 }
 
 /// A player name that opens the player page, with the HOF marker when earned.
@@ -219,14 +231,16 @@ pub fn player_link(
     hof: bool,
     nav: &Navigator,
 ) -> AnyElement {
-    let route = Route::Player { id: player_id.to_string() };
+    let route = Route::Player {
+        id: player_id.to_string(),
+    };
     h_flex()
         .gap_1()
         .items_center()
         .min_w_0()
         .child(nav.button(id, name, route))
         .when(hof, |this| this.child(hof_tag()))
-    .into_any_element()
+        .into_any_element()
 }
 
 /// The centered message shown when a query returns nothing.
@@ -250,7 +264,7 @@ pub fn empty_state(title: &str, message: &str, cx: &App) -> AnyElement {
                 .text_color(cx.theme().muted_foreground)
                 .child(message.to_string()),
         )
-    .into_any_element()
+        .into_any_element()
 }
 
 /// A spinner with a message, for content that is genuinely loading.
@@ -264,7 +278,7 @@ pub fn loading_state(message: &str, cx: &App) -> AnyElement {
         .text_color(cx.theme().muted_foreground)
         .child(Spinner::new().small())
         .child(div().text_sm().child(message.to_string()))
-    .into_any_element()
+        .into_any_element()
 }
 
 /// A failed request, with a Retry command.
@@ -278,10 +292,7 @@ pub fn error_state(
         .w_full()
         .py_4()
         .gap_3()
-        .child(
-            Alert::error(id.clone(), message.to_string())
-                .title("Couldn't load this data"),
-        )
+        .child(Alert::error(id.clone(), message.to_string()).title("Couldn't load this data"))
         .child(
             h_flex().child(
                 Button::new(ElementId::Name(format!("{id}-retry").into()))
@@ -291,7 +302,7 @@ pub fn error_state(
                     .on_click(on_retry),
             ),
         )
-    .into_any_element()
+        .into_any_element()
 }
 
 /// A small muted note line.
@@ -300,7 +311,7 @@ pub fn note(text: impl Into<SharedString>, cx: &App) -> AnyElement {
         .text_xs()
         .text_color(cx.theme().muted_foreground)
         .child(text.into())
-    .into_any_element()
+        .into_any_element()
 }
 
 /// A labeled filter control for a filter bar.
@@ -315,7 +326,7 @@ pub fn field(label: &str, control: impl IntoElement, cx: &App) -> AnyElement {
                 .child(label.to_string()),
         )
         .child(control)
-    .into_any_element()
+        .into_any_element()
 }
 
 /// The horizontal, wrapping bar that holds a page's filters.

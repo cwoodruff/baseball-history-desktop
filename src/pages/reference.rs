@@ -18,8 +18,16 @@ pub struct ReferencePageView {
 }
 
 impl ReferencePageView {
-    pub fn new(page: ReferencePage, _nav: Navigator, _: &mut Window, _: &mut Context<Self>) -> Self {
-        Self { page, scroll: ScrollHandle::new() }
+    pub fn new(
+        page: ReferencePage,
+        _nav: Navigator,
+        _: &mut Window,
+        _: &mut Context<Self>,
+    ) -> Self {
+        Self {
+            page,
+            scroll: ScrollHandle::new(),
+        }
     }
 
     fn content(&self) -> (&'static str, &'static str, &'static str, &'static str) {
@@ -60,8 +68,17 @@ impl Render for ReferencePageView {
         widgets::page_body("reference", &self.scroll).child(
             widgets::page_column()
                 .max_w(px(820.))
-                .child(widgets::page_header(Some(eyebrow), title, Some(subtitle.into()), vec![], cx))
-                .child(TextView::markdown(SharedString::from(format!("md-{title}")), body).selectable(true)),
+                .child(widgets::page_header(
+                    Some(eyebrow),
+                    title,
+                    Some(subtitle.into()),
+                    vec![],
+                    cx,
+                ))
+                .child(
+                    TextView::markdown(SharedString::from(format!("md-{title}")), body)
+                        .selectable(true),
+                ),
         )
     }
 }

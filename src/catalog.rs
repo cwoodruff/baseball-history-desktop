@@ -168,7 +168,11 @@ pub fn round_order(code: &str) -> u8 {
 }
 
 /// Awards the service has ballot-by-ballot voting for.
-pub const VOTED_AWARDS: &[&str] = &["Cy Young Award", "Most Valuable Player", "Rookie of the Year"];
+pub const VOTED_AWARDS: &[&str] = &[
+    "Cy Young Award",
+    "Most Valuable Player",
+    "Rookie of the Year",
+];
 
 pub const AWARDS: &[&str] = &[
     "ALCS MVP",
@@ -263,10 +267,51 @@ pub const SALARY_TEAMS: &[(&str, &str, i32, i32)] = &[
 ];
 
 pub const PARK_STATES: &[&str] = &[
-    "AL", "AR", "AZ", "CA", "CDMX", "CO", "CT", "DC", "DE", "ENG", "FL", "GA", "HI", "IA", "IL",
-    "IN", "KS", "KY", "LA", "MA", "MD", "MI", "MN", "MO", "NC", "NE", "New South Wales", "NJ",
-    "Nuevo Leon", "NV", "NY", "OH", "OK", "ON", "PA", "QC", "RI", "Seoul", "TN", "Tokyo", "TX",
-    "VA", "WA", "WI", "WV",
+    "AL",
+    "AR",
+    "AZ",
+    "CA",
+    "CDMX",
+    "CO",
+    "CT",
+    "DC",
+    "DE",
+    "ENG",
+    "FL",
+    "GA",
+    "HI",
+    "IA",
+    "IL",
+    "IN",
+    "KS",
+    "KY",
+    "LA",
+    "MA",
+    "MD",
+    "MI",
+    "MN",
+    "MO",
+    "NC",
+    "NE",
+    "New South Wales",
+    "NJ",
+    "Nuevo Leon",
+    "NV",
+    "NY",
+    "OH",
+    "OK",
+    "ON",
+    "PA",
+    "QC",
+    "RI",
+    "Seoul",
+    "TN",
+    "Tokyo",
+    "TX",
+    "VA",
+    "WA",
+    "WI",
+    "WV",
 ];
 
 /// Decades offered by the era filter, newest first.

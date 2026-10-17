@@ -22,7 +22,9 @@ fn main() {
     use gpui_kit::{AppContext as _, HeadlessAppContext, px, size};
 
     let mut args = std::env::args().skip(1);
-    let out = args.next().expect("usage: snapshots <out-dir> [dark] [route ...]");
+    let out = args
+        .next()
+        .expect("usage: snapshots <out-dir> [dark] [route ...]");
     std::fs::create_dir_all(&out).unwrap();
     let mut rest: Vec<String> = args.collect();
     let dark = rest.first().is_some_and(|a| a == "dark");
@@ -38,7 +40,9 @@ fn main() {
         match parts.as_slice() {
             ["home"] => Route::Home,
             ["players"] => Route::Players { letter: 'A' },
-            ["players", l] => Route::Players { letter: l.chars().next().unwrap() },
+            ["players", l] => Route::Players {
+                letter: l.chars().next().unwrap(),
+            },
             ["player", id] => Route::Player { id: id.to_string() },
             ["teams"] => Route::Teams,
             ["franchise", id] => Route::Franchise { id: id.to_string() },
@@ -48,15 +52,25 @@ fn main() {
                 year: y.parse().unwrap(),
             },
             ["parks"] => Route::Parks,
-            ["park", key] => Route::Park { key: key.to_string() },
+            ["park", key] => Route::Park {
+                key: key.to_string(),
+            },
             ["batting"] => Route::BattingLeaders,
             ["pitching"] => Route::PitchingLeaders,
-            ["hof"] => Route::HallOfFame { year: None, category: None },
+            ["hof"] => Route::HallOfFame {
+                year: None,
+                category: None,
+            },
             ["awards"] => Route::Awards,
             ["postseason"] => Route::Postseason { year: None },
             ["salaries"] => Route::Salaries,
-            ["search", q] => Route::Search { query: q.to_string() },
-            ["compare"] => Route::Compare { first: None, second: None },
+            ["search", q] => Route::Search {
+                query: q.to_string(),
+            },
+            ["compare"] => Route::Compare {
+                first: None,
+                second: None,
+            },
             ["compare", a, b] => Route::Compare {
                 first: Some(a.to_string()),
                 second: Some(b.to_string()),
@@ -75,7 +89,15 @@ fn main() {
     );
     cx.update(|cx| {
         gpui_kit::init(cx);
-        theme::apply(if dark { ThemeMode::Dark } else { ThemeMode::Light }, None, cx);
+        theme::apply(
+            if dark {
+                ThemeMode::Dark
+            } else {
+                ThemeMode::Light
+            },
+            None,
+            cx,
+        );
         baseball_history_desktop::workspace::bind_keys(cx);
     });
 

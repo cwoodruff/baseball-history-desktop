@@ -82,7 +82,10 @@ impl ApiClient {
     pub fn new(base_url: impl Into<String>) -> Self {
         let config = ureq::Agent::config_builder()
             .timeout_global(Some(Duration::from_secs(30)))
-            .user_agent(concat!("baseball-history-desktop/", env!("CARGO_PKG_VERSION")))
+            .user_agent(concat!(
+                "baseball-history-desktop/",
+                env!("CARGO_PKG_VERSION")
+            ))
             .http_status_as_error(false)
             .build();
         let base_url: String = base_url.into();
@@ -125,7 +128,12 @@ impl ApiClient {
 
     // MARK: Players
 
-    pub fn players(&self, letter: Option<char>, page: u32, page_size: u32) -> Result<Paged<PlayerSummary>> {
+    pub fn players(
+        &self,
+        letter: Option<char>,
+        page: u32,
+        page_size: u32,
+    ) -> Result<Paged<PlayerSummary>> {
         self.get(
             "/players",
             Query::new()
@@ -156,16 +164,26 @@ impl ApiClient {
     }
 
     pub fn player_postseason_batting(&self, id: &str) -> Result<Vec<PostseasonBatting>> {
-        self.get(&format!("/players/{}/postseason/batting", seg(id)), Query::new())
+        self.get(
+            &format!("/players/{}/postseason/batting", seg(id)),
+            Query::new(),
+        )
     }
 
     pub fn player_postseason_pitching(&self, id: &str) -> Result<Vec<PostseasonPitching>> {
-        self.get(&format!("/players/{}/postseason/pitching", seg(id)), Query::new())
+        self.get(
+            &format!("/players/{}/postseason/pitching", seg(id)),
+            Query::new(),
+        )
     }
 
     // MARK: Teams
 
-    pub fn franchises(&self, league: Option<&str>, active_only: bool) -> Result<Vec<FranchiseSummary>> {
+    pub fn franchises(
+        &self,
+        league: Option<&str>,
+        active_only: bool,
+    ) -> Result<Vec<FranchiseSummary>> {
         self.get(
             "/teams/franchises",
             Query::new()
@@ -215,7 +233,10 @@ impl ApiClient {
     }
 
     pub fn hall_of_fame_voting(&self, player_id: &str) -> Result<HallOfFameVoting> {
-        self.get(&format!("/hall-of-fame/{}/voting", seg(player_id)), Query::new())
+        self.get(
+            &format!("/hall-of-fame/{}/voting", seg(player_id)),
+            Query::new(),
+        )
     }
 
     // MARK: Search
@@ -227,14 +248,25 @@ impl ApiClient {
     // MARK: Salaries
 
     pub fn player_salaries(&self, player_id: &str) -> Result<PlayerSalaryHistory> {
-        self.get(&format!("/salaries/players/{}", seg(player_id)), Query::new())
+        self.get(
+            &format!("/salaries/players/{}", seg(player_id)),
+            Query::new(),
+        )
     }
 
     pub fn team_payroll(&self, team_id: &str, year: i32) -> Result<TeamPayroll> {
-        self.get(&format!("/salaries/teams/{}/{year}", seg(team_id)), Query::new())
+        self.get(
+            &format!("/salaries/teams/{}/{year}", seg(team_id)),
+            Query::new(),
+        )
     }
 
-    pub fn salary_leaders(&self, year: Option<i32>, page: u32, page_size: u32) -> Result<Paged<SalaryEntry>> {
+    pub fn salary_leaders(
+        &self,
+        year: Option<i32>,
+        page: u32,
+        page_size: u32,
+    ) -> Result<Paged<SalaryEntry>> {
         self.get(
             "/salaries/leaders",
             Query::new()
@@ -246,7 +278,12 @@ impl ApiClient {
 
     // MARK: Parks
 
-    pub fn parks(&self, state: Option<&str>, page: u32, page_size: u32) -> Result<Paged<ParkSummary>> {
+    pub fn parks(
+        &self,
+        state: Option<&str>,
+        page: u32,
+        page_size: u32,
+    ) -> Result<Paged<ParkSummary>> {
         self.get(
             "/parks",
             Query::new()
