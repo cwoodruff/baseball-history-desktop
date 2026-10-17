@@ -5,21 +5,43 @@ use gpui_kit::assets::IconName;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Route {
     Home,
-    Players { letter: char },
-    Player { id: String },
+    Players {
+        letter: char,
+    },
+    Player {
+        id: String,
+    },
     Teams,
-    Franchise { id: String },
-    TeamSeason { team_id: String, lg_id: String, year: i32 },
+    Franchise {
+        id: String,
+    },
+    TeamSeason {
+        team_id: String,
+        lg_id: String,
+        year: i32,
+    },
     Parks,
-    Park { key: String },
+    Park {
+        key: String,
+    },
     BattingLeaders,
     PitchingLeaders,
-    HallOfFame { year: Option<i32>, category: Option<String> },
+    HallOfFame {
+        year: Option<i32>,
+        category: Option<String>,
+    },
     Awards,
-    Postseason { year: Option<i32> },
+    Postseason {
+        year: Option<i32>,
+    },
     Salaries,
-    Search { query: String },
-    Compare { first: Option<String>, second: Option<String> },
+    Search {
+        query: String,
+    },
+    Compare {
+        first: Option<String>,
+        second: Option<String>,
+    },
     Reference(ReferencePage),
 }
 
@@ -100,12 +122,20 @@ impl Section {
             Section::Parks => Route::Parks,
             Section::BattingLeaders => Route::BattingLeaders,
             Section::PitchingLeaders => Route::PitchingLeaders,
-            Section::HallOfFame => Route::HallOfFame { year: None, category: None },
+            Section::HallOfFame => Route::HallOfFame {
+                year: None,
+                category: None,
+            },
             Section::Awards => Route::Awards,
             Section::Postseason => Route::Postseason { year: None },
             Section::Salaries => Route::Salaries,
-            Section::Compare => Route::Compare { first: None, second: None },
-            Section::Search => Route::Search { query: String::new() },
+            Section::Compare => Route::Compare {
+                first: None,
+                second: None,
+            },
+            Section::Search => Route::Search {
+                query: String::new(),
+            },
             Section::About => Route::Reference(ReferencePage::About),
             Section::Glossary => Route::Reference(ReferencePage::Glossary),
             Section::SurvivingRecords => Route::Reference(ReferencePage::SurvivingRecords),
@@ -115,7 +145,15 @@ impl Section {
 
 /// Sidebar groups in display order.
 pub const SIDEBAR: &[(&str, &[Section])] = &[
-    ("Browse", &[Section::Home, Section::Players, Section::Teams, Section::Parks]),
+    (
+        "Browse",
+        &[
+            Section::Home,
+            Section::Players,
+            Section::Teams,
+            Section::Parks,
+        ],
+    ),
     (
         "Stats",
         &[
@@ -128,7 +166,10 @@ pub const SIDEBAR: &[(&str, &[Section])] = &[
         ],
     ),
     ("Tools", &[Section::Search, Section::Compare]),
-    ("Reference", &[Section::About, Section::Glossary, Section::SurvivingRecords]),
+    (
+        "Reference",
+        &[Section::About, Section::Glossary, Section::SurvivingRecords],
+    ),
 ];
 
 impl Route {

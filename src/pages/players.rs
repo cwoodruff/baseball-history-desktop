@@ -68,7 +68,9 @@ impl PlayersPage {
                     .selected(letter == self.letter)
                     .label(letter.to_string())
                     .accessibility_label(format!("Players whose last name starts with {letter}"))
-                    .on_click(cx.listener(move |this, _, window, cx| this.set_letter(letter, window, cx)))
+                    .on_click(
+                        cx.listener(move |this, _, window, cx| this.set_letter(letter, window, cx)),
+                    )
             }))
             .into_any_element()
     }
@@ -90,65 +92,72 @@ impl PlayersPage {
                 .child(div().font_bold().child(format::int(value)))
                 .child(widgets::note(label.to_string(), cx))
         };
-        Button::new(SharedString::from(format!("player-card-{}", player.player_id)))
-            .outline()
-            .w(px(232.))
-            .h_auto()
-            .accessibility_label(name.clone())
-            .on_click(self.nav.to(Route::Player { id: player.player_id.clone() }))
-            .child(
-                v_flex()
-                    .w_full()
-                    .p_2()
-                    .gap_2()
-                    .child(
-                        h_flex()
-                            .gap_2()
-                            .items_center()
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .size_9()
-                                    .flex_shrink_0()
-                                    .rounded_full()
-                                    .bg(widgets::brand_navy())
-                                    .text_color(white())
-                                    .text_sm()
-                                    .font_bold()
-                                    .child(initials),
-                            )
-                            .child(
-                                v_flex()
-                                    .min_w_0()
-                                    .items_start()
-                                    .child(
-                                        h_flex()
-                                            .gap_1()
-                                            .items_center()
-                                            .child(div().font_semibold().truncate().child(name))
-                                            .when(player.is_partial_record, |this| {
-                                                this.child(widgets::partial_dagger(cx))
-                                            })
-                                            .when(player.is_hall_of_famer, |this| this.child(widgets::hof_tag())),
-                                    )
-                                    .child(widgets::note(years, cx)),
-                            ),
-                    )
-                    .child(
-                        h_flex()
-                            .w_full()
-                            .justify_around()
-                            .pt_1()
-                            .border_t_1()
-                            .border_color(cx.theme().border)
-                            .child(stat("H", player.total_hits))
-                            .child(stat("HR", player.total_home_runs))
-                            .child(stat("G", player.total_games)),
-                    ),
-            )
-            .into_any_element()
+        Button::new(SharedString::from(format!(
+            "player-card-{}",
+            player.player_id
+        )))
+        .outline()
+        .w(px(232.))
+        .h_auto()
+        .accessibility_label(name.clone())
+        .on_click(self.nav.to(Route::Player {
+            id: player.player_id.clone(),
+        }))
+        .child(
+            v_flex()
+                .w_full()
+                .p_2()
+                .gap_2()
+                .child(
+                    h_flex()
+                        .gap_2()
+                        .items_center()
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .size_9()
+                                .flex_shrink_0()
+                                .rounded_full()
+                                .bg(widgets::brand_navy())
+                                .text_color(white())
+                                .text_sm()
+                                .font_bold()
+                                .child(initials),
+                        )
+                        .child(
+                            v_flex()
+                                .min_w_0()
+                                .items_start()
+                                .child(
+                                    h_flex()
+                                        .gap_1()
+                                        .items_center()
+                                        .child(div().font_semibold().truncate().child(name))
+                                        .when(player.is_partial_record, |this| {
+                                            this.child(widgets::partial_dagger(cx))
+                                        })
+                                        .when(player.is_hall_of_famer, |this| {
+                                            this.child(widgets::hof_tag())
+                                        }),
+                                )
+                                .child(widgets::note(years, cx)),
+                        ),
+                )
+                .child(
+                    h_flex()
+                        .w_full()
+                        .justify_around()
+                        .pt_1()
+                        .border_t_1()
+                        .border_color(cx.theme().border)
+                        .child(stat("H", player.total_hits))
+                        .child(stat("HR", player.total_home_runs))
+                        .child(stat("G", player.total_games)),
+                ),
+        )
+        .into_any_element()
     }
 }
 

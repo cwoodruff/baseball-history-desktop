@@ -52,14 +52,29 @@ struct Row {
     better: Better,
 }
 
-fn compare_num(label: &'static str, l: Option<f64>, r: Option<f64>, fmt: impl Fn(Option<f64>) -> String, lower_is_better: bool) -> Row {
+fn compare_num(
+    label: &'static str,
+    l: Option<f64>,
+    r: Option<f64>,
+    fmt: impl Fn(Option<f64>) -> String,
+    lower_is_better: bool,
+) -> Row {
     let better = match (l, r) {
         (Some(a), Some(b)) if (a - b).abs() > f64::EPSILON => {
-            if (a > b) != lower_is_better { Better::Left } else { Better::Right }
+            if (a > b) != lower_is_better {
+                Better::Left
+            } else {
+                Better::Right
+            }
         }
         _ => Better::Neither,
     };
-    Row { label, left: fmt(l), right: fmt(r), better }
+    Row {
+        label,
+        left: fmt(l),
+        right: fmt(r),
+        better,
+    }
 }
 
 fn count(v: Option<i64>) -> Option<f64> {
@@ -78,9 +93,10 @@ impl ComparePage {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        let make_input = |placeholder: &'static str, window: &mut Window, cx: &mut Context<Self>| {
-            cx.new(|cx| InputState::new(window, cx).placeholder(placeholder))
-        };
+        let make_input =
+            |placeholder: &'static str, window: &mut Window, cx: &mut Context<Self>| {
+                cx.new(|cx| InputState::new(window, cx).placeholder(placeholder))
+            };
         let inputs = [
             make_input("Search for the first player…", window, cx),
             make_input("Search for the second player…", window, cx),
@@ -89,12 +105,16 @@ impl ComparePage {
             .iter()
             .enumerate()
             .map(|(ix, input)| {
-                cx.subscribe_in(input, window, move |this, state, event: &InputEvent, _, cx| {
-                    if matches!(event, InputEvent::Change) {
-                        let query = state.read(cx).value().trim().to_string();
-                        this.search(ix, query, cx);
-                    }
-                })
+                cx.subscribe_in(
+                    input,
+                    window,
+                    move |this, state, event: &InputEvent, _, cx| {
+                        if matches!(event, InputEvent::Change) {
+                            let query = state.read(cx).value().trim().to_string();
+                            this.search(ix, query, cx);
+                        }
+                    },
+                )
             })
             .collect();
         let slot = |input: Entity<InputState>| Slot {
@@ -131,12 +151,16 @@ impl ComparePage {
         }
         slot.results = Loadable::Loading;
         slot._tasks = vec![cx.spawn(async move |this, cx| {
-            cx.background_executor().timer(Duration::from_millis(300)).await;
+            cx.background_executor()
+                .timer(Duration::from_millis(300))
+                .await;
             let Ok(task) = this.update(cx, |_, cx| {
                 loader::fetch(
                     cx,
                     move |api| api.search(&query, 8),
-                    move |this: &mut Self, result, _| this.slots[ix].results = Loadable::from_result(result),
+                    move |this: &mut Self, result, _| {
+                        this.slots[ix].results = Loadable::from_result(result)
+                    },
                 )
             }) else {
                 return;
@@ -156,12 +180,16 @@ impl ComparePage {
             loader::fetch(
                 cx,
                 move |api| api.player(&id),
-                move |this: &mut Self, result, _| this.slots[ix].player = Loadable::from_result(result),
+                move |this: &mut Self, result, _| {
+                    this.slots[ix].player = Loadable::from_result(result)
+                },
             ),
             loader::fetch(
                 cx,
                 move |api| api.player_awards(&awards_id),
-                move |this: &mut Self, result, _| this.slots[ix].awards = Loadable::from_result(result),
+                move |this: &mut Self, result, _| {
+                    this.slots[ix].awards = Loadable::from_result(result)
+                },
             ),
         ];
         cx.notify();
@@ -184,7 +212,11 @@ impl ComparePage {
 
     fn render_slot(&self, ix: usize, cx: &mut Context<Self>) -> AnyElement {
         let slot = &self.slots[ix];
-        let accent = if ix == 0 { widgets::brand_navy() } else { widgets::brand_red() };
+        let accent = if ix == 0 {
+            widgets::brand_navy()
+        } else {
+            widgets::brand_red()
+        };
         let heading = if ix == 0 { "Player 1" } else { "Player 2" };
         let header = h_flex()
             .px_4()
@@ -206,16 +238,26 @@ impl ComparePage {
                             .items_center()
                             .flex_wrap()
                             .child(div().text_xl().font_bold().child(name))
-                            .when(p.is_hall_of_famer, |this| this.child(widgets::hof_year_tag(p.hof_induction_year)))
+                            .when(p.is_hall_of_famer, |this| {
+                                this.child(widgets::hof_year_tag(p.hof_induction_year))
+                            })
                             .when(p.is_partial_record, |this| {
-                                this.child(widgets::partial_record_chip(SharedString::from(format!("cmp-partial-{ix}")), &self.nav))
+                                this.child(widgets::partial_record_chip(
+                                    SharedString::from(format!("cmp-partial-{ix}")),
+                                    &self.nav,
+                                ))
                             }),
                     )
                     .child(widgets::note(
                         format!(
                             "{} · {}",
                             format::year_span(p.debut_year, p.final_year),
-                            p.teams.iter().filter_map(|t| t.team_name.clone()).take(3).collect::<Vec<_>>().join(", ")
+                            p.teams
+                                .iter()
+                                .filter_map(|t| t.team_name.clone())
+                                .take(3)
+                                .collect::<Vec<_>>()
+                                .join(", ")
                         ),
                         cx,
                     ))
@@ -227,14 +269,18 @@ impl ComparePage {
                                     .small()
                                     .outline()
                                     .label("Open player")
-                                    .on_click(self.nav.to(Route::Player { id: p.player_id.clone() })),
+                                    .on_click(self.nav.to(Route::Player {
+                                        id: p.player_id.clone(),
+                                    })),
                             )
                             .child(
                                 Button::new(SharedString::from(format!("cmp-change-{ix}")))
                                     .small()
                                     .ghost()
                                     .label("Change")
-                                    .on_click(cx.listener(move |this, _, window, cx| this.clear_slot(ix, window, cx))),
+                                    .on_click(cx.listener(move |this, _, window, cx| {
+                                        this.clear_slot(ix, window, cx)
+                                    })),
                             ),
                     )
                     .into_any_element()
@@ -247,32 +293,45 @@ impl ComparePage {
             (Some(_), _) => widgets::loading_state("Loading player…", cx),
             (None, _) => {
                 let results: AnyElement = match &slot.results {
-                    Loadable::Ready(r) if r.players.is_empty() => widgets::note("No players found. Try just a last name.", cx),
+                    Loadable::Ready(r) if r.players.is_empty() => {
+                        widgets::note("No players found. Try just a last name.", cx)
+                    }
                     Loadable::Ready(r) => v_flex()
                         .gap_0p5()
                         .children(r.players.iter().map(|p| {
                             let id = p.player_id.clone();
-                            Button::new(SharedString::from(format!("cmp-pick-{ix}-{}", p.player_id)))
-                                .ghost()
-                                .small()
-                                .w_full()
-                                .justify_start()
-                                .label(format!(
-                                    "{}  ·  {}",
-                                    p.full_name.clone().unwrap_or_else(|| p.player_id.clone()),
-                                    format::year_span(p.debut_year, p.final_year)
-                                ))
-                                .on_click(cx.listener(move |this, _, _, cx| this.select(ix, id.clone(), cx)))
+                            Button::new(SharedString::from(format!(
+                                "cmp-pick-{ix}-{}",
+                                p.player_id
+                            )))
+                            .ghost()
+                            .small()
+                            .w_full()
+                            .justify_start()
+                            .label(format!(
+                                "{}  ·  {}",
+                                p.full_name.clone().unwrap_or_else(|| p.player_id.clone()),
+                                format::year_span(p.debut_year, p.final_year)
+                            ))
+                            .on_click(
+                                cx.listener(move |this, _, _, cx| this.select(ix, id.clone(), cx)),
+                            )
                         }))
                         .into_any_element(),
                     Loadable::Loading => widgets::loading_state("Searching…", cx),
                     Loadable::Failed(message) => widgets::note(message.clone(), cx),
-                    Loadable::Idle => widgets::note("Type at least two characters of a player's name.", cx),
+                    Loadable::Idle => {
+                        widgets::note("Type at least two characters of a player's name.", cx)
+                    }
                 };
                 v_flex()
                     .p_4()
                     .gap_3()
-                    .child(Input::new(&slot.input).cleanable(true).prefix(gpui_kit::component::Icon::new(IconName::Search).small()))
+                    .child(
+                        Input::new(&slot.input)
+                            .cleanable(true)
+                            .prefix(gpui_kit::component::Icon::new(IconName::Search).small()),
+                    )
                     .child(results)
                     .into_any_element()
             }
@@ -300,28 +359,34 @@ impl ComparePage {
                 .py_1p5()
                 .font_family(mono.clone())
                 .when(align_right, |this| this.text_right())
-                .when(better, |this| this.bg(better_bg).text_color(better_fg).font_bold())
+                .when(better, |this| {
+                    this.bg(better_bg).text_color(better_fg).font_bold()
+                })
                 .child(value)
         };
         widgets::section(title.to_string(), cx)
             .child(
-                v_flex().text_sm().children(rows.into_iter().enumerate().map(|(i, row)| {
-                    h_flex()
-                        .w_full()
-                        .when(i > 0, |this| this.border_t_1().border_color(cx.theme().border))
-                        .child(cell(row.left, row.better == Better::Left, true))
-                        .child(
-                            div()
-                                .w(px(140.))
-                                .flex_shrink_0()
-                                .py_1p5()
-                                .text_center()
-                                .font_semibold()
-                                .text_color(cx.theme().muted_foreground)
-                                .child(row.label),
-                        )
-                        .child(cell(row.right, row.better == Better::Right, false))
-                })),
+                v_flex()
+                    .text_sm()
+                    .children(rows.into_iter().enumerate().map(|(i, row)| {
+                        h_flex()
+                            .w_full()
+                            .when(i > 0, |this| {
+                                this.border_t_1().border_color(cx.theme().border)
+                            })
+                            .child(cell(row.left, row.better == Better::Left, true))
+                            .child(
+                                div()
+                                    .w(px(140.))
+                                    .flex_shrink_0()
+                                    .py_1p5()
+                                    .text_center()
+                                    .font_semibold()
+                                    .text_color(cx.theme().muted_foreground)
+                                    .child(row.label),
+                            )
+                            .child(cell(row.right, row.better == Better::Right, false))
+                    })),
             )
             .into_any_element()
     }
@@ -333,8 +398,16 @@ impl ComparePage {
             self.slots[0].awards.ready().unwrap_or(&empty),
             self.slots[1].awards.ready().unwrap_or(&empty),
         );
-        let award_count = |awards: &[PlayerAward], name: &str| awards.iter().filter(|x| x.award_id == name).count() as f64;
-        let mut honors = vec![compare_num("Total Awards", Some(aw.len() as f64), Some(bw.len() as f64), int_fmt, false)];
+        let award_count = |awards: &[PlayerAward], name: &str| {
+            awards.iter().filter(|x| x.award_id == name).count() as f64
+        };
+        let mut honors = vec![compare_num(
+            "Total Awards",
+            Some(aw.len() as f64),
+            Some(bw.len() as f64),
+            int_fmt,
+            false,
+        )];
         for (label, award) in [
             ("MVP", "Most Valuable Player"),
             ("Cy Young", "Cy Young Award"),
@@ -342,12 +415,26 @@ impl ComparePage {
             ("Gold Glove", "Gold Glove"),
             ("Silver Slugger", "Silver Slugger"),
         ] {
-            honors.push(compare_num(label, Some(award_count(aw, award)), Some(award_count(bw, award)), int_fmt, false));
+            honors.push(compare_num(
+                label,
+                Some(award_count(aw, award)),
+                Some(award_count(bw, award)),
+                int_fmt,
+                false,
+            ));
         }
         honors.push(Row {
             label: "Hall of Fame",
-            left: if a.is_hall_of_famer { format!("Yes ({})", format::year(a.hof_induction_year)) } else { "No".into() },
-            right: if b.is_hall_of_famer { format!("Yes ({})", format::year(b.hof_induction_year)) } else { "No".into() },
+            left: if a.is_hall_of_famer {
+                format!("Yes ({})", format::year(a.hof_induction_year))
+            } else {
+                "No".into()
+            },
+            right: if b.is_hall_of_famer {
+                format!("Yes ({})", format::year(b.hof_induction_year))
+            } else {
+                "No".into()
+            },
             better: match (a.is_hall_of_famer, b.is_hall_of_famer) {
                 (true, false) => Better::Left,
                 (false, true) => Better::Right,
@@ -357,15 +444,29 @@ impl ComparePage {
 
         let mut sections = vec![self.mirror("Awards & Honors", honors, cx)];
         let (ab, bb) = (a.career_batting.as_ref(), b.career_batting.as_ref());
-        if ab.is_some_and(|x| x.at_bats.unwrap_or(0) > 0) || bb.is_some_and(|x| x.at_bats.unwrap_or(0) > 0) {
+        if ab.is_some_and(|x| x.at_bats.unwrap_or(0) > 0)
+            || bb.is_some_and(|x| x.at_bats.unwrap_or(0) > 0)
+        {
             macro_rules! bat {
                 ($label:expr, $field:ident) => {
-                    compare_num($label, count(ab.and_then(|x| x.$field)), count(bb.and_then(|x| x.$field)), int_fmt, false)
+                    compare_num(
+                        $label,
+                        count(ab.and_then(|x| x.$field)),
+                        count(bb.and_then(|x| x.$field)),
+                        int_fmt,
+                        false,
+                    )
                 };
             }
             macro_rules! rate {
                 ($label:expr, $field:ident) => {
-                    compare_num($label, ab.and_then(|x| x.$field), bb.and_then(|x| x.$field), format::rate, false)
+                    compare_num(
+                        $label,
+                        ab.and_then(|x| x.$field),
+                        bb.and_then(|x| x.$field),
+                        format::rate,
+                        false,
+                    )
                 };
             }
             sections.push(self.mirror(
@@ -390,10 +491,18 @@ impl ComparePage {
             ));
         }
         let (ap, bp) = (a.career_pitching.as_ref(), b.career_pitching.as_ref());
-        if ap.is_some_and(|x| x.innings_pitched.unwrap_or(0.) > 0.) || bp.is_some_and(|x| x.innings_pitched.unwrap_or(0.) > 0.) {
+        if ap.is_some_and(|x| x.innings_pitched.unwrap_or(0.) > 0.)
+            || bp.is_some_and(|x| x.innings_pitched.unwrap_or(0.) > 0.)
+        {
             macro_rules! pit {
                 ($label:expr, $field:ident, $lower:expr) => {
-                    compare_num($label, count(ap.and_then(|x| x.$field)), count(bp.and_then(|x| x.$field)), int_fmt, $lower)
+                    compare_num(
+                        $label,
+                        count(ap.and_then(|x| x.$field)),
+                        count(bp.and_then(|x| x.$field)),
+                        int_fmt,
+                        $lower,
+                    )
                 };
             }
             sections.push(self.mirror(
@@ -401,15 +510,33 @@ impl ComparePage {
                 vec![
                     pit!("W", wins, false),
                     pit!("L", losses, true),
-                    compare_num("ERA", ap.and_then(|x| x.era), bp.and_then(|x| x.era), format::decimal2, true),
+                    compare_num(
+                        "ERA",
+                        ap.and_then(|x| x.era),
+                        bp.and_then(|x| x.era),
+                        format::decimal2,
+                        true,
+                    ),
                     pit!("G", games, false),
                     pit!("GS", games_started, false),
                     pit!("SV", saves, false),
                     pit!("CG", complete_games, false),
                     pit!("SHO", shutouts, false),
-                    compare_num("IP", ap.and_then(|x| x.innings_pitched), bp.and_then(|x| x.innings_pitched), format::innings, false),
+                    compare_num(
+                        "IP",
+                        ap.and_then(|x| x.innings_pitched),
+                        bp.and_then(|x| x.innings_pitched),
+                        format::innings,
+                        false,
+                    ),
                     pit!("SO", strikeouts, false),
-                    compare_num("WHIP", ap.and_then(|x| x.whip), bp.and_then(|x| x.whip), format::decimal2, true),
+                    compare_num(
+                        "WHIP",
+                        ap.and_then(|x| x.whip),
+                        bp.and_then(|x| x.whip),
+                        format::decimal2,
+                        true,
+                    ),
                 ],
                 cx,
             ));
@@ -453,13 +580,30 @@ impl Render for ComparePage {
         let right = self.render_slot(1, cx);
         let comparison = self.render_comparison(cx).unwrap_or_else(|| {
             div()
-                .child(widgets::note("Choose two players to compare their careers.", cx))
+                .child(widgets::note(
+                    "Choose two players to compare their careers.",
+                    cx,
+                ))
                 .into_any_element()
         });
         widgets::page_body("compare", &self.scroll).child(
             widgets::page_column()
-                .child(widgets::page_header(Some("Tools"), "Compare Players", Some("Put two careers side by side.".into()), vec![], cx))
-                .child(h_flex().w_full().gap_4().items_start().flex_wrap().child(left).child(right))
+                .child(widgets::page_header(
+                    Some("Tools"),
+                    "Compare Players",
+                    Some("Put two careers side by side.".into()),
+                    vec![],
+                    cx,
+                ))
+                .child(
+                    h_flex()
+                        .w_full()
+                        .gap_4()
+                        .items_start()
+                        .flex_wrap()
+                        .child(left)
+                        .child(right),
+                )
                 .child(comparison),
         )
     }

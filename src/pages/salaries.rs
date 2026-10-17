@@ -60,7 +60,11 @@ fn team_name(id: &str) -> String {
 impl SalariesPage {
     pub fn new(nav: Navigator, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let year_picker = picker::picker(
-            picker::years("All Years", catalog::FIRST_SALARY_SEASON, catalog::LAST_SALARY_SEASON),
+            picker::years(
+                "All Years",
+                catalog::FIRST_SALARY_SEASON,
+                catalog::LAST_SALARY_SEASON,
+            ),
             "",
             true,
             window,
@@ -68,26 +72,40 @@ impl SalariesPage {
         );
         let team_picker = picker::picker(team_options(None), "", true, window, cx);
         let subscriptions = vec![
-            cx.subscribe_in(&year_picker, window, |this, _, event: &PickerEvent, window, cx| {
-                this.year = picker::value_of(event).and_then(|v| v.parse().ok());
-                // Keep the team only if it played that year.
-                let options = team_options(this.year);
-                let keep = this.team.clone().filter(|t| {
-                    catalog::SALARY_TEAMS
-                        .iter()
-                        .any(|(id, _, first, last)| id == t && this.year.is_none_or(|y| (*first..=*last).contains(&y)))
-                });
-                this.team_picker.update(cx, |state, cx| state.set_items(options, window, cx));
-                picker::select_value(&this.team_picker, keep.as_deref().unwrap_or(""), window, cx);
-                this.team = keep;
-                this.page = 1;
-                this.reload(window, cx);
-            }),
-            cx.subscribe_in(&team_picker, window, |this, _, event: &PickerEvent, window, cx| {
-                this.team = picker::value_of(event);
-                this.page = 1;
-                this.reload(window, cx);
-            }),
+            cx.subscribe_in(
+                &year_picker,
+                window,
+                |this, _, event: &PickerEvent, window, cx| {
+                    this.year = picker::value_of(event).and_then(|v| v.parse().ok());
+                    // Keep the team only if it played that year.
+                    let options = team_options(this.year);
+                    let keep = this.team.clone().filter(|t| {
+                        catalog::SALARY_TEAMS.iter().any(|(id, _, first, last)| {
+                            id == t && this.year.is_none_or(|y| (*first..=*last).contains(&y))
+                        })
+                    });
+                    this.team_picker
+                        .update(cx, |state, cx| state.set_items(options, window, cx));
+                    picker::select_value(
+                        &this.team_picker,
+                        keep.as_deref().unwrap_or(""),
+                        window,
+                        cx,
+                    );
+                    this.team = keep;
+                    this.page = 1;
+                    this.reload(window, cx);
+                },
+            ),
+            cx.subscribe_in(
+                &team_picker,
+                window,
+                |this, _, event: &PickerEvent, window, cx| {
+                    this.team = picker::value_of(event);
+                    this.page = 1;
+                    this.reload(window, cx);
+                },
+            ),
         ];
         let mut page = Self {
             nav,
@@ -110,7 +128,9 @@ impl SalariesPage {
         self.team = None;
         self.page = 1;
         picker::select_value(&self.year_picker, "", window, cx);
-        self.team_picker.update(cx, |state, cx| state.set_items(team_options(None), window, cx));
+        self.team_picker.update(cx, |state, cx| {
+            state.set_items(team_options(None), window, cx)
+        });
         picker::select_value(&self.team_picker, "", window, cx);
         self.reload(window, cx);
     }
@@ -118,7 +138,10 @@ impl SalariesPage {
     fn table(&self, rows: &[SalaryEntry], offset: usize, cx: &App) -> AnyElement {
         let nav = self.nav.clone();
         let mut cols = vec![
-            Col::element("#", 56., move |_: &SalaryEntry, ix| (ix + 1 + offset).to_string()).right(),
+            Col::element("#", 56., move |_: &SalaryEntry, ix| {
+                (ix + 1 + offset).to_string()
+            })
+            .right(),
             Col::element("Player", 260., move |e: &SalaryEntry, ix| {
                 widgets::player_link(
                     SharedString::from(format!("sal-{}-{}-{ix}", e.player_id, e.year)),
@@ -133,9 +156,14 @@ impl SalariesPage {
             cols.push(Col::text("Year", 64., |e: &SalaryEntry| e.year.to_string()));
         }
         cols.push(Col::text("Team", 240., |e: &SalaryEntry| {
-            e.team_id.as_deref().map(team_name).unwrap_or_else(|| format::DASH.into())
+            e.team_id
+                .as_deref()
+                .map(team_name)
+                .unwrap_or_else(|| format::DASH.into())
         }));
-        cols.push(Col::num("Salary", 140., |e: &SalaryEntry| format::money(e.salary)));
+        cols.push(Col::num("Salary", 140., |e: &SalaryEntry| {
+            format::money(e.salary)
+        }));
         grid("salary-table", cols, rows, cx)
     }
 }
@@ -167,8 +195,16 @@ impl Page for SalariesPage {
 impl Render for SalariesPage {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let filters = widgets::filter_bar(cx)
-            .child(widgets::field("Year", picker::dropdown(&self.year_picker, 120.), cx))
-            .child(widgets::field("Team", picker::dropdown(&self.team_picker, 300.), cx))
+            .child(widgets::field(
+                "Year",
+                picker::dropdown(&self.year_picker, 120.),
+                cx,
+            ))
+            .child(widgets::field(
+                "Team",
+                picker::dropdown(&self.team_picker, 300.),
+                cx,
+            ))
             .child(
                 Button::new("salary-clear")
                     .small()
@@ -194,7 +230,9 @@ impl Render for SalariesPage {
                 let offset = ((p.page.max(1) - 1) * PAGE_SIZE) as usize;
                 v_flex()
                     .gap_3()
-                    .child(widgets::section("Top Salaries", cx).child(self.table(&p.data, offset, cx)))
+                    .child(
+                        widgets::section("Top Salaries", cx).child(self.table(&p.data, offset, cx)),
+                    )
                     .child(widgets::pager(
                         "salary-pager",
                         p.page,
@@ -222,9 +260,23 @@ impl Render for SalariesPage {
                         .rounded(cx.theme().radius_lg)
                         .bg(widgets::brand_navy())
                         .text_color(white())
-                        .child(div().text_sm().opacity(0.85).child(format!("{} — {} Total Payroll", team_name(&p.team_id), p.year)))
-                        .child(div().text_3xl().font_bold().child(format::money(p.total_payroll)))
-                        .child(div().text_sm().opacity(0.85).child(format!("{} players", format::int(p.player_count)))),
+                        .child(div().text_sm().opacity(0.85).child(format!(
+                            "{} — {} Total Payroll",
+                            team_name(&p.team_id),
+                            p.year
+                        )))
+                        .child(
+                            div()
+                                .text_3xl()
+                                .font_bold()
+                                .child(format::money(p.total_payroll)),
+                        )
+                        .child(
+                            div()
+                                .text_sm()
+                                .opacity(0.85)
+                                .child(format!("{} players", format::int(p.player_count))),
+                        ),
                 )
                 .child(widgets::section("Roster Salaries", cx).child(self.table(&p.players, 0, cx)))
                 .into_any_element(),
@@ -237,7 +289,13 @@ impl Render for SalariesPage {
         };
         widgets::page_body("salaries", &self.scroll).child(
             widgets::page_column()
-                .child(widgets::page_header(Some("Stats"), "Salary Explorer", Some("Player salaries from 1985 to 2016.".into()), vec![], cx))
+                .child(widgets::page_header(
+                    Some("Stats"),
+                    "Salary Explorer",
+                    Some("Player salaries from 1985 to 2016.".into()),
+                    vec![],
+                    cx,
+                ))
                 .child(filters)
                 .children(hint)
                 .child(body)

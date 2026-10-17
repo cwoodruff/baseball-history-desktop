@@ -42,7 +42,11 @@ pub fn describe(error: &anyhow::Error) -> String {
     }
     let root = error.root_cause().to_string();
     let top = error.to_string();
-    if root == top { top } else { format!("{top} ({root})") }
+    if root == top {
+        top
+    } else {
+        format!("{top} ({root})")
+    }
 }
 
 /// Runs `fetch` on the background executor and hands its result to `apply` on

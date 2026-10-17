@@ -1,6 +1,5 @@
 //! Baseball History desktop: a GPUI Kit client for the Baseball History Project API.
 
-
 pub mod api;
 pub mod assets;
 pub mod catalog;

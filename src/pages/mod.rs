@@ -95,35 +95,41 @@ pub fn build(route: &Route, nav: &Navigator, window: &mut Window, cx: &mut App) 
         Route::Franchise { id } => {
             PageView::Franchise(cx.new(|cx| franchise::FranchisePage::new(id, nav, window, cx)))
         }
-        Route::TeamSeason { team_id, lg_id, year } => PageView::TeamSeason(cx.new(|cx| {
-            team_season::TeamSeasonPage::new(team_id, lg_id, year, nav, window, cx)
-        })),
+        Route::TeamSeason {
+            team_id,
+            lg_id,
+            year,
+        } => PageView::TeamSeason(
+            cx.new(|cx| team_season::TeamSeasonPage::new(team_id, lg_id, year, nav, window, cx)),
+        ),
         Route::Parks => PageView::Parks(cx.new(|cx| parks::ParksPage::new(nav, window, cx))),
-        Route::Park { key } => PageView::Park(cx.new(|cx| park::ParkPage::new(key, nav, window, cx))),
-        Route::BattingLeaders => PageView::Leaders(cx.new(|cx| {
-            leaders::LeadersPage::new(leaders::Kind::Batting, nav, window, cx)
-        })),
-        Route::PitchingLeaders => PageView::Leaders(cx.new(|cx| {
-            leaders::LeadersPage::new(leaders::Kind::Pitching, nav, window, cx)
-        })),
-        Route::HallOfFame { year, category } => PageView::HallOfFame(cx.new(|cx| {
-            hall_of_fame::HallOfFamePage::new(year, category, nav, window, cx)
-        })),
+        Route::Park { key } => {
+            PageView::Park(cx.new(|cx| park::ParkPage::new(key, nav, window, cx)))
+        }
+        Route::BattingLeaders => PageView::Leaders(
+            cx.new(|cx| leaders::LeadersPage::new(leaders::Kind::Batting, nav, window, cx)),
+        ),
+        Route::PitchingLeaders => PageView::Leaders(
+            cx.new(|cx| leaders::LeadersPage::new(leaders::Kind::Pitching, nav, window, cx)),
+        ),
+        Route::HallOfFame { year, category } => PageView::HallOfFame(
+            cx.new(|cx| hall_of_fame::HallOfFamePage::new(year, category, nav, window, cx)),
+        ),
         Route::Awards => PageView::Awards(cx.new(|cx| awards::AwardsPage::new(nav, window, cx))),
-        Route::Postseason { year } => PageView::Postseason(cx.new(|cx| {
-            postseason::PostseasonPage::new(year, nav, window, cx)
-        })),
+        Route::Postseason { year } => PageView::Postseason(
+            cx.new(|cx| postseason::PostseasonPage::new(year, nav, window, cx)),
+        ),
         Route::Salaries => {
             PageView::Salaries(cx.new(|cx| salaries::SalariesPage::new(nav, window, cx)))
         }
         Route::Search { query } => {
             PageView::Search(cx.new(|cx| search::SearchPage::new(query, nav, window, cx)))
         }
-        Route::Compare { first, second } => PageView::Compare(cx.new(|cx| {
-            compare::ComparePage::new(first, second, nav, window, cx)
-        })),
-        Route::Reference(page) => PageView::Reference(cx.new(|cx| {
-            reference::ReferencePageView::new(page, nav, window, cx)
-        })),
+        Route::Compare { first, second } => PageView::Compare(
+            cx.new(|cx| compare::ComparePage::new(first, second, nav, window, cx)),
+        ),
+        Route::Reference(page) => PageView::Reference(
+            cx.new(|cx| reference::ReferencePageView::new(page, nav, window, cx)),
+        ),
     }
 }

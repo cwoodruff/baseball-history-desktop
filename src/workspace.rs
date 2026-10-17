@@ -2,17 +2,19 @@
 
 use std::time::Duration;
 
+use gpui_kit::assets::IconName;
 use gpui_kit::component::{
-    ActiveTheme as _, Disableable as _, Sizable as _, StyledExt as _, ThemeMode,
+    ActiveTheme as _, Disableable as _, Sizable as _, StyledExt as _, ThemeMode, TitleBar,
     button::{Button, ButtonVariants as _},
     h_flex,
     input::{Input, InputEvent, InputState},
-    sidebar::{Sidebar, SidebarCollapsible, SidebarGroup, SidebarHeader, SidebarMenu, SidebarMenuItem},
-    v_flex, TitleBar,
+    sidebar::{
+        Sidebar, SidebarCollapsible, SidebarGroup, SidebarHeader, SidebarMenu, SidebarMenuItem,
+    },
+    v_flex,
 };
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
-use gpui_kit::assets::IconName;
 
 use crate::api::models::SearchResults;
 use crate::format;
@@ -24,7 +26,16 @@ use crate::ui::widgets;
 
 actions!(
     baseball,
-    [Back, Forward, Reload, FocusSearch, ToggleTheme, ToggleSidebar, Home, CloseSearch]
+    [
+        Back,
+        Forward,
+        Reload,
+        FocusSearch,
+        ToggleTheme,
+        ToggleSidebar,
+        Home,
+        CloseSearch
+    ]
 );
 
 const CONTEXT: &str = "Workspace";
@@ -72,7 +83,10 @@ impl Workspace {
         let subscription = cx.subscribe_in(&search, window, Self::on_search_event);
         let home = pages::build(&Route::Home, &nav, window, cx);
         Self {
-            history: vec![Entry { route: Route::Home, page: home }],
+            history: vec![Entry {
+                route: Route::Home,
+                page: home,
+            }],
             cursor: 0,
             nav,
             focus_handle: cx.focus_handle(),
@@ -150,7 +164,11 @@ impl Workspace {
     }
 
     fn toggle_theme(&mut self, _: &ToggleTheme, window: &mut Window, cx: &mut Context<Self>) {
-        let mode = if cx.theme().is_dark() { ThemeMode::Light } else { ThemeMode::Dark };
+        let mode = if cx.theme().is_dark() {
+            ThemeMode::Light
+        } else {
+            ThemeMode::Dark
+        };
         crate::theme::apply(mode, Some(window), cx);
     }
 
@@ -201,7 +219,9 @@ impl Workspace {
         self.search_open = true;
         self.search_results = Loadable::Loading;
         self.search_task = Some(cx.spawn(async move |this, cx| {
-            cx.background_executor().timer(Duration::from_millis(300)).await;
+            cx.background_executor()
+                .timer(Duration::from_millis(300))
+                .await;
             let Ok(task) = this.update(cx, |_, cx| {
                 loader::fetch(
                     cx,
@@ -220,7 +240,9 @@ impl Workspace {
 
     /// Types `query` into the global search box, as if the user had.
     pub fn type_search(&mut self, query: &str, window: &mut Window, cx: &mut Context<Self>) {
-        self.search.update(cx, |state, cx| state.set_value(query.to_string(), window, cx));
+        self.search.update(cx, |state, cx| {
+            state.set_value(query.to_string(), window, cx)
+        });
         self.query_changed(query.trim().to_string(), cx);
     }
 
@@ -241,13 +263,29 @@ impl Workspace {
                 .text_color(cx.theme().danger)
                 .child(message.clone())
                 .into_any_element(),
-            Loadable::Ready(results) if results.players.is_empty() && results.franchises.is_empty() => {
+            Loadable::Ready(results)
+                if results.players.is_empty() && results.franchises.is_empty() =>
+            {
                 v_flex()
                     .p_3()
                     .gap_2()
-                    .child(div().text_sm().font_semibold().child(format!("No results found for “{query}”")))
-                    .child(widgets::note("Check the spelling or try just a last name.", cx))
-                    .child(div().text_xs().font_semibold().text_color(cx.theme().muted_foreground).child("POPULAR PLAYERS"))
+                    .child(
+                        div()
+                            .text_sm()
+                            .font_semibold()
+                            .child(format!("No results found for “{query}”")),
+                    )
+                    .child(widgets::note(
+                        "Check the spelling or try just a last name.",
+                        cx,
+                    ))
+                    .child(
+                        div()
+                            .text_xs()
+                            .font_semibold()
+                            .text_color(cx.theme().muted_foreground)
+                            .child("POPULAR PLAYERS"),
+                    )
                     .child(
                         h_flex().gap_1().flex_wrap().children(
                             [
@@ -283,14 +321,19 @@ impl Workspace {
                 if !results.players.is_empty() {
                     list = list.child(group_label("PLAYERS", cx));
                     for player in results.players.iter().take(10) {
-                        let name = player.full_name.clone().unwrap_or_else(|| player.player_id.clone());
+                        let name = player
+                            .full_name
+                            .clone()
+                            .unwrap_or_else(|| player.player_id.clone());
                         list = list.child(search_row(
                             SharedString::from(format!("search-player-{}", player.player_id)),
                             IconName::User,
                             name,
                             format::year_span(player.debut_year, player.final_year),
                             player.is_hall_of_famer,
-                            self.nav.to(Route::Player { id: player.player_id.clone() }),
+                            self.nav.to(Route::Player {
+                                id: player.player_id.clone(),
+                            }),
                             cx,
                         ));
                     }
@@ -298,15 +341,24 @@ impl Workspace {
                 if !results.franchises.is_empty() {
                     list = list.child(group_label("TEAMS", cx));
                     for team in results.franchises.iter().take(5) {
-                        let name = team.franchise_name.clone().unwrap_or_else(|| team.franchise_id.clone());
-                        let subtitle = if team.is_active { "Active Franchise" } else { "Historical Franchise" };
+                        let name = team
+                            .franchise_name
+                            .clone()
+                            .unwrap_or_else(|| team.franchise_id.clone());
+                        let subtitle = if team.is_active {
+                            "Active Franchise"
+                        } else {
+                            "Historical Franchise"
+                        };
                         list = list.child(search_row(
                             SharedString::from(format!("search-team-{}", team.franchise_id)),
                             IconName::Flag,
                             name,
                             subtitle.to_string(),
                             false,
-                            self.nav.to(Route::Franchise { id: team.franchise_id.clone() }),
+                            self.nav.to(Route::Franchise {
+                                id: team.franchise_id.clone(),
+                            }),
                             cx,
                         ));
                     }
@@ -314,17 +366,27 @@ impl Workspace {
                 let more = results.total_player_count as usize > results.players.len()
                     || results.total_franchise_count as usize > results.franchises.len();
                 list = list.child(
-                    h_flex().px_2().pt_1().border_t_1().border_color(cx.theme().border).child(
-                        Button::new("search-see-all")
-                            .xsmall()
-                            .ghost()
-                            .label(if more {
-                                format!("See all {} results", results.total_player_count + results.total_franchise_count)
-                            } else {
-                                "Open search page".to_string()
-                            })
-                            .on_click(self.nav.to(Route::Search { query: query.clone() })),
-                    ),
+                    h_flex()
+                        .px_2()
+                        .pt_1()
+                        .border_t_1()
+                        .border_color(cx.theme().border)
+                        .child(
+                            Button::new("search-see-all")
+                                .xsmall()
+                                .ghost()
+                                .label(if more {
+                                    format!(
+                                        "See all {} results",
+                                        results.total_player_count + results.total_franchise_count
+                                    )
+                                } else {
+                                    "Open search page".to_string()
+                                })
+                                .on_click(self.nav.to(Route::Search {
+                                    query: query.clone(),
+                                })),
+                        ),
                 );
                 list.into_any_element()
             }
@@ -339,22 +401,24 @@ impl Workspace {
                 .position(point(px(300.), px(30.)))
                 .snap_to_window_with_margin(px(8.))
                 .child(
-                div()
-                    .id("search-results")
-                    .occlude()
-                    .mt_1()
-                    .w(px(380.))
-                    .max_h(px(480.))
-                    .overflow_y_scroll()
-                    .bg(cx.theme().popover)
-                    .text_color(cx.theme().popover_foreground)
-                    .border_1()
-                    .border_color(cx.theme().border)
-                    .rounded(cx.theme().radius_lg)
-                    .shadow_lg()
-                    .on_mouse_down_out(cx.listener(|this, _, window, cx| this.close_search(window, cx)))
-                    .child(body),
-            ),
+                    div()
+                        .id("search-results")
+                        .occlude()
+                        .mt_1()
+                        .w(px(380.))
+                        .max_h(px(480.))
+                        .overflow_y_scroll()
+                        .bg(cx.theme().popover)
+                        .text_color(cx.theme().popover_foreground)
+                        .border_1()
+                        .border_color(cx.theme().border)
+                        .rounded(cx.theme().radius_lg)
+                        .shadow_lg()
+                        .on_mouse_down_out(
+                            cx.listener(|this, _, window, cx| this.close_search(window, cx)),
+                        )
+                        .child(body),
+                ),
         )
         .with_priority(1)
         .into_any_element()
@@ -365,88 +429,106 @@ impl Workspace {
     fn render_title_bar(&self, cx: &mut Context<Self>) -> AnyElement {
         let title = self.current().page.title(cx);
         let is_dark = cx.theme().is_dark();
-        TitleBar::new().child(
-            h_flex()
-                .w_full()
-                .pr_2()
-                .gap_2()
-                .items_center()
-                .justify_between()
-                .child(
-                    h_flex()
-                        .gap_1()
-                        .items_center()
-                        .min_w_0()
-                        .child(
-                            Button::new("nav-back")
-                                .ghost()
-                                .small()
-                                .icon(IconName::ChevronLeft)
-                                .accessibility_label("Back")
-                                .tooltip_with_action("Back", &Back, Some(CONTEXT))
-                                .disabled(!self.can_go_back())
-                                .on_click(cx.listener(|this, _, window, cx| this.back(&Back, window, cx))),
-                        )
-                        .child(
-                            Button::new("nav-forward")
-                                .ghost()
-                                .small()
-                                .icon(IconName::ChevronRight)
-                                .accessibility_label("Forward")
-                                .tooltip_with_action("Forward", &Forward, Some(CONTEXT))
-                                .disabled(!self.can_go_forward())
-                                .on_click(cx.listener(|this, _, window, cx| this.forward(&Forward, window, cx))),
-                        )
-                        .child(
-                            div()
-                                .ml_1()
-                                .text_sm()
-                                .font_semibold()
-                                .truncate()
-                                .child(title),
-                        ),
-                )
-                .child(
-                    h_flex()
-                        .gap_1()
-                        .items_center()
-                        .child(
-                            v_flex()
-                                .w(px(300.))
-                                .child(
-                                    Input::new(&self.search)
-                                        .small()
-                                        .cleanable(true)
-                                        .prefix(gpui_kit::component::Icon::new(IconName::Search).small())
-                                        .aria_label("Search players and teams"),
-                                )
-                                .when(self.search_open, |this| this.child(self.render_search_results(cx))),
-                        )
-                        .child(
-                            Button::new("refresh")
-                                .ghost()
-                                .small()
-                                .icon(IconName::RefreshCw)
-                                .accessibility_label("Reload")
-                                .tooltip_with_action("Reload", &Reload, Some(CONTEXT))
-                                .on_click(cx.listener(|this, _, window, cx| this.reload(&Reload, window, cx))),
-                        )
-                        .child(
-                            Button::new("theme-toggle")
-                                .ghost()
-                                .small()
-                                .icon(if is_dark { IconName::Sun } else { IconName::Moon })
-                                .accessibility_label("Toggle dark mode")
-                                .tooltip_with_action(
-                                    if is_dark { "Light mode" } else { "Dark mode" },
-                                    &ToggleTheme,
-                                    Some(CONTEXT),
-                                )
-                                .on_click(cx.listener(|this, _, window, cx| this.toggle_theme(&ToggleTheme, window, cx))),
-                        ),
-                ),
-        )
-        .into_any_element()
+        TitleBar::new()
+            .child(
+                h_flex()
+                    .w_full()
+                    .pr_2()
+                    .gap_2()
+                    .items_center()
+                    .justify_between()
+                    .child(
+                        h_flex()
+                            .gap_1()
+                            .items_center()
+                            .min_w_0()
+                            .child(
+                                Button::new("nav-back")
+                                    .ghost()
+                                    .small()
+                                    .icon(IconName::ChevronLeft)
+                                    .accessibility_label("Back")
+                                    .tooltip_with_action("Back", &Back, Some(CONTEXT))
+                                    .disabled(!self.can_go_back())
+                                    .on_click(cx.listener(|this, _, window, cx| {
+                                        this.back(&Back, window, cx)
+                                    })),
+                            )
+                            .child(
+                                Button::new("nav-forward")
+                                    .ghost()
+                                    .small()
+                                    .icon(IconName::ChevronRight)
+                                    .accessibility_label("Forward")
+                                    .tooltip_with_action("Forward", &Forward, Some(CONTEXT))
+                                    .disabled(!self.can_go_forward())
+                                    .on_click(cx.listener(|this, _, window, cx| {
+                                        this.forward(&Forward, window, cx)
+                                    })),
+                            )
+                            .child(
+                                div()
+                                    .ml_1()
+                                    .text_sm()
+                                    .font_semibold()
+                                    .truncate()
+                                    .child(title),
+                            ),
+                    )
+                    .child(
+                        h_flex()
+                            .gap_1()
+                            .items_center()
+                            .child(
+                                v_flex()
+                                    .w(px(300.))
+                                    .child(
+                                        Input::new(&self.search)
+                                            .small()
+                                            .cleanable(true)
+                                            .prefix(
+                                                gpui_kit::component::Icon::new(IconName::Search)
+                                                    .small(),
+                                            )
+                                            .aria_label("Search players and teams"),
+                                    )
+                                    .when(self.search_open, |this| {
+                                        this.child(self.render_search_results(cx))
+                                    }),
+                            )
+                            .child(
+                                Button::new("refresh")
+                                    .ghost()
+                                    .small()
+                                    .icon(IconName::RefreshCw)
+                                    .accessibility_label("Reload")
+                                    .tooltip_with_action("Reload", &Reload, Some(CONTEXT))
+                                    .on_click(cx.listener(|this, _, window, cx| {
+                                        this.reload(&Reload, window, cx)
+                                    })),
+                            )
+                            .child(
+                                Button::new("theme-toggle")
+                                    .ghost()
+                                    .small()
+                                    .icon(if is_dark {
+                                        IconName::Sun
+                                    } else {
+                                        IconName::Moon
+                                    })
+                                    .accessibility_label("Toggle dark mode")
+                                    .tooltip_with_action(
+                                        if is_dark { "Light mode" } else { "Dark mode" },
+                                        &ToggleTheme,
+                                        Some(CONTEXT),
+                                    )
+                                    .on_click(cx.listener(|this, _, window, cx| {
+                                        this.toggle_theme(&ToggleTheme, window, cx)
+                                    })),
+                            ),
+                    ),
+            )
+            .into_any_element()
     }
 
     fn render_sidebar(&self, cx: &mut Context<Self>) -> AnyElement {
@@ -484,13 +566,15 @@ impl Workspace {
                 ),
             )
             .children(SIDEBAR.iter().map(|(group, sections)| {
-                SidebarGroup::new(*group).child(SidebarMenu::new().children(sections.iter().map(|section| {
-                    let section = *section;
-                    SidebarMenuItem::new(section.label())
-                        .icon(section.icon())
-                        .active(section == active)
-                        .on_click(self.nav.to(section.route()))
-                })))
+                SidebarGroup::new(*group).child(SidebarMenu::new().children(sections.iter().map(
+                    |section| {
+                        let section = *section;
+                        SidebarMenuItem::new(section.label())
+                            .icon(section.icon())
+                            .active(section == active)
+                            .on_click(self.nav.to(section.route()))
+                    },
+                )))
             }))
             .footer(
                 v_flex()
@@ -505,7 +589,9 @@ impl Workspace {
                             .icon(IconName::ExternalLink)
                             .when(!collapsed, |this| this.label("API documentation"))
                             .tooltip("Open the API documentation in your browser")
-                            .on_click(|_, _, cx| cx.open_url("https://baseballhistoryproject.com/ApiDocs")),
+                            .on_click(|_, _, cx| {
+                                cx.open_url("https://baseballhistoryproject.com/ApiDocs")
+                            }),
                     )
                     .child(
                         Button::new("sidebar-github")
@@ -516,7 +602,9 @@ impl Workspace {
                             .icon(IconName::Github)
                             .when(!collapsed, |this| this.label("Source on GitHub"))
                             .tooltip("Open the source code on GitHub")
-                            .on_click(|_, _, cx| cx.open_url("https://github.com/cwoodruff/baseball-history")),
+                            .on_click(|_, _, cx| {
+                                cx.open_url("https://github.com/cwoodruff/baseball-history")
+                            }),
                     ),
             )
             .into_any_element()
@@ -546,9 +634,14 @@ impl Workspace {
                             .icon(IconName::PanelLeft)
                             .accessibility_label("Toggle sidebar")
                             .tooltip_with_action("Toggle sidebar", &ToggleSidebar, Some(CONTEXT))
-                            .on_click(cx.listener(|this, _, window, cx| this.toggle_sidebar(&ToggleSidebar, window, cx))),
+                            .on_click(cx.listener(|this, _, window, cx| {
+                                this.toggle_sidebar(&ToggleSidebar, window, cx)
+                            })),
                     )
-                    .child(format!("© {} Baseball History · Data from the", crate::catalog::LAST_SEASON + 1))
+                    .child(format!(
+                        "© {} Baseball History · Data from the",
+                        crate::catalog::LAST_SEASON + 1
+                    ))
                     .child(
                         Button::new("lahman-link")
                             .link()
@@ -572,17 +665,21 @@ impl Workspace {
                             .link()
                             .xsmall()
                             .label("Licensing")
-                            .on_click(|_, _, cx| cx.open_url("https://baseballhistoryproject.com/Licensing")),
+                            .on_click(|_, _, cx| {
+                                cx.open_url("https://baseballhistoryproject.com/Licensing")
+                            }),
                     )
                     .child(
                         Button::new("footer-privacy")
                             .link()
                             .xsmall()
                             .label("Privacy")
-                            .on_click(|_, _, cx| cx.open_url("https://baseballhistoryproject.com/Privacy")),
+                            .on_click(|_, _, cx| {
+                                cx.open_url("https://baseballhistoryproject.com/Privacy")
+                            }),
                     ),
             )
-        .into_any_element()
+            .into_any_element()
     }
 }
 
@@ -595,7 +692,7 @@ fn group_label(label: &str, cx: &App) -> AnyElement {
         .font_semibold()
         .text_color(cx.theme().muted_foreground)
         .child(label.to_string())
-    .into_any_element()
+        .into_any_element()
 }
 
 fn search_row(
@@ -607,35 +704,40 @@ fn search_row(
     on_click: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
     cx: &App,
 ) -> AnyElement {
-    div().px_1().child(
-        Button::new(id)
-            .ghost()
-            .w_full()
-            .h_auto()
-            .on_click(on_click)
-            .child(
-                h_flex()
-                    .w_full()
-                    .py_1()
-                    .gap_2()
-                    .items_center()
-                    .child(gpui_kit::component::Icon::new(icon).text_color(cx.theme().muted_foreground))
-                    .child(
-                        v_flex()
-                            .flex_1()
-                            .min_w_0()
-                            .items_start()
-                            .child(
-                                h_flex()
-                                    .gap_1()
-                                    .child(div().text_sm().truncate().child(title))
-                                    .when(hof, |this| this.child(widgets::hof_tag())),
-                            )
-                            .child(widgets::note(subtitle, cx)),
-                    ),
-            ),
-    )
-    .into_any_element()
+    div()
+        .px_1()
+        .child(
+            Button::new(id)
+                .ghost()
+                .w_full()
+                .h_auto()
+                .on_click(on_click)
+                .child(
+                    h_flex()
+                        .w_full()
+                        .py_1()
+                        .gap_2()
+                        .items_center()
+                        .child(
+                            gpui_kit::component::Icon::new(icon)
+                                .text_color(cx.theme().muted_foreground),
+                        )
+                        .child(
+                            v_flex()
+                                .flex_1()
+                                .min_w_0()
+                                .items_start()
+                                .child(
+                                    h_flex()
+                                        .gap_1()
+                                        .child(div().text_sm().truncate().child(title))
+                                        .when(hof, |this| this.child(widgets::hof_tag())),
+                                )
+                                .child(widgets::note(subtitle, cx)),
+                        ),
+                ),
+        )
+        .into_any_element()
 }
 
 impl Focusable for Workspace {
@@ -658,8 +760,14 @@ impl Render for Workspace {
             .on_action(cx.listener(Self::toggle_sidebar))
             .on_action(cx.listener(Self::go_home))
             .on_action(cx.listener(Self::on_close_search))
-            .on_mouse_up(MouseButton::Navigate(NavigationDirection::Back), cx.listener(|this, _, window, cx| this.back(&Back, window, cx)))
-            .on_mouse_up(MouseButton::Navigate(NavigationDirection::Forward), cx.listener(|this, _, window, cx| this.forward(&Forward, window, cx)))
+            .on_mouse_up(
+                MouseButton::Navigate(NavigationDirection::Back),
+                cx.listener(|this, _, window, cx| this.back(&Back, window, cx)),
+            )
+            .on_mouse_up(
+                MouseButton::Navigate(NavigationDirection::Forward),
+                cx.listener(|this, _, window, cx| this.forward(&Forward, window, cx)),
+            )
             .size_full()
             .bg(cx.theme().background)
             .text_color(cx.theme().foreground)
@@ -673,6 +781,6 @@ impl Render for Workspace {
                     .child(div().flex_1().min_w_0().h_full().child(page)),
             )
             .child(self.render_status_bar(cx))
-        .into_any_element()
+            .into_any_element()
     }
 }

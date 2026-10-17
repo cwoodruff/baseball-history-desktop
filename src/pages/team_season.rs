@@ -71,7 +71,10 @@ impl TeamSeasonPage {
         };
         let mut seasons = f.seasons.clone();
         seasons.sort_by_key(|s| s.year);
-        let Some(ix) = seasons.iter().position(|s| s.year == self.year && s.team_id == self.team_id) else {
+        let Some(ix) = seasons
+            .iter()
+            .position(|s| s.year == self.year && s.team_id == self.team_id)
+        else {
             return div().into_any_element();
         };
         let lo = ix.saturating_sub(6);
@@ -95,26 +98,35 @@ impl TeamSeasonPage {
                             .small()
                             .outline()
                             .icon(IconName::ChevronLeft)
-                            .label(prev.map(|s| s.year.to_string()).unwrap_or_else(|| "Previous".into()))
+                            .label(
+                                prev.map(|s| s.year.to_string())
+                                    .unwrap_or_else(|| "Previous".into()),
+                            )
                             .disabled(prev.is_none())
                             .when_some(prev, |this, s| this.on_click(self.nav.to(route(s)))),
                     )
                     .children(seasons[lo..hi].iter().map(|s| {
                         let current = s.year == self.year && s.team_id == self.team_id;
-                        Button::new(SharedString::from(format!("other-{}-{}", s.team_id, s.year)))
-                            .small()
-                            .compact()
-                            .when(current, |this| this.primary())
-                            .when(!current, |this| this.ghost())
-                            .label(s.year.to_string())
-                            .on_click(self.nav.to(route(s)))
+                        Button::new(SharedString::from(format!(
+                            "other-{}-{}",
+                            s.team_id, s.year
+                        )))
+                        .small()
+                        .compact()
+                        .when(current, |this| this.primary())
+                        .when(!current, |this| this.ghost())
+                        .label(s.year.to_string())
+                        .on_click(self.nav.to(route(s)))
                     }))
                     .child(
                         Button::new("next-season")
                             .small()
                             .outline()
                             .icon(IconName::ChevronRight)
-                            .label(next.map(|s| s.year.to_string()).unwrap_or_else(|| "Next".into()))
+                            .label(
+                                next.map(|s| s.year.to_string())
+                                    .unwrap_or_else(|| "Next".into()),
+                            )
                             .disabled(next.is_none())
                             .when_some(next, |this, s| this.on_click(self.nav.to(route(s)))),
                     ),
@@ -128,7 +140,9 @@ use gpui_kit::component::Disableable as _;
 impl Page for TeamSeasonPage {
     fn title(&self, _: &App) -> SharedString {
         match &self.season {
-            Loadable::Ready(s) => format!("{} {}", s.year, format::text(s.team_name.as_deref())).into(),
+            Loadable::Ready(s) => {
+                format!("{} {}", s.year, format::text(s.team_name.as_deref())).into()
+            }
             _ => format!("{} {}", self.year, self.team_id).into(),
         }
     }
@@ -141,7 +155,8 @@ impl Page for TeamSeasonPage {
             move |api| api.team_season(&team, &lg, year),
             |this: &mut Self, result, cx| {
                 this.season = Loadable::from_result(result);
-                if let Some(franchise_id) = this.season.ready().and_then(|s| s.franchise_id.clone()) {
+                if let Some(franchise_id) = this.season.ready().and_then(|s| s.franchise_id.clone())
+                {
                     this.load_franchise(franchise_id, cx);
                 }
             },
@@ -158,17 +173,31 @@ impl Render for TeamSeasonPage {
                 let mut badges: Vec<AnyElement> = Vec::new();
                 if s.won_world_series {
                     badges.push(
-                        Tag::custom(widgets::hof_gold(), rgb(0x1a1a1a).into(), rgb(0xb8962e).into())
-                            .small()
-                            .child("World Series Champions")
-                            .into_any_element(),
+                        Tag::custom(
+                            widgets::hof_gold(),
+                            rgb(0x1a1a1a).into(),
+                            rgb(0xb8962e).into(),
+                        )
+                        .small()
+                        .child("World Series Champions")
+                        .into_any_element(),
                     );
                 }
                 if s.won_pennant {
-                    badges.push(Tag::primary().small().child(format!("{} Pennant", format::text(s.lg_id.as_deref()))).into_any_element());
+                    badges.push(
+                        Tag::primary()
+                            .small()
+                            .child(format!("{} Pennant", format::text(s.lg_id.as_deref())))
+                            .into_any_element(),
+                    );
                 }
                 if s.won_division {
-                    badges.push(Tag::success().small().child("Division Winners").into_any_element());
+                    badges.push(
+                        Tag::success()
+                            .small()
+                            .child("Division Winners")
+                            .into_any_element(),
+                    );
                 }
                 if s.won_wild_card {
                     badges.push(Tag::info().small().child("Wild Card").into_any_element());
@@ -177,7 +206,10 @@ impl Render for TeamSeasonPage {
                     Button::new("franchise-link")
                         .small()
                         .outline()
-                        .label(format!("{} history", format::text(s.franchise_name.as_deref())))
+                        .label(format!(
+                            "{} history",
+                            format::text(s.franchise_name.as_deref())
+                        ))
                         .on_click(self.nav.to(Route::Franchise { id }))
                 });
                 let header = h_flex()
@@ -199,8 +231,14 @@ impl Render for TeamSeasonPage {
                         ("Win %", format::rate(s.win_pct)),
                         ("Rank", format::int(s.rank)),
                         ("Runs", format::int(s.batting.as_ref().and_then(|b| b.runs))),
-                        ("HR", format::int(s.batting.as_ref().and_then(|b| b.home_runs))),
-                        ("ERA", format::decimal2(s.pitching.as_ref().and_then(|p| p.era))),
+                        (
+                            "HR",
+                            format::int(s.batting.as_ref().and_then(|b| b.home_runs)),
+                        ),
+                        (
+                            "ERA",
+                            format::decimal2(s.pitching.as_ref().and_then(|p| p.era)),
+                        ),
                     ],
                     cx,
                 );
@@ -212,19 +250,30 @@ impl Render for TeamSeasonPage {
                     cx,
                 ));
                 let managers = widgets::section("Manager(s)", cx).child(
-                    v_flex().px_3().py_2().gap_1().children(s.managers.iter().map(|m| {
-                        h_flex()
-                            .justify_between()
-                            .gap_2()
-                            .child(widgets::player_link(
-                                SharedString::from(format!("mgr-{}", m.player_id)),
-                                &m.player_id,
-                                format::text(m.full_name.as_deref()),
-                                m.is_hall_of_famer,
-                                &self.nav,
-                            ))
-                            .child(widgets::note(format!("{} ({} G)", format::record(m.wins, m.losses), format::int(m.games)), cx))
-                    })),
+                    v_flex()
+                        .px_3()
+                        .py_2()
+                        .gap_1()
+                        .children(s.managers.iter().map(|m| {
+                            h_flex()
+                                .justify_between()
+                                .gap_2()
+                                .child(widgets::player_link(
+                                    SharedString::from(format!("mgr-{}", m.player_id)),
+                                    &m.player_id,
+                                    format::text(m.full_name.as_deref()),
+                                    m.is_hall_of_famer,
+                                    &self.nav,
+                                ))
+                                .child(widgets::note(
+                                    format!(
+                                        "{} ({} G)",
+                                        format::record(m.wins, m.losses),
+                                        format::int(m.games)
+                                    ),
+                                    cx,
+                                ))
+                        })),
                 );
 
                 let mut batters = s.batters.clone();
@@ -234,7 +283,13 @@ impl Render for TeamSeasonPage {
                 let nav = self.nav.clone();
                 let bat_cols = vec![
                     Col::element("Player", 240., move |b: &TeamBatter, _| {
-                        widgets::player_link(SharedString::from(format!("bat-{}", b.player_id)), &b.player_id, format::text(b.full_name.as_deref()), b.is_hall_of_famer, &nav)
+                        widgets::player_link(
+                            SharedString::from(format!("bat-{}", b.player_id)),
+                            &b.player_id,
+                            format::text(b.full_name.as_deref()),
+                            b.is_hall_of_famer,
+                            &nav,
+                        )
                     }),
                     Col::num("G", 56., |b: &TeamBatter| format::int(b.games)),
                     Col::num("AB", 64., |b: &TeamBatter| format::int(b.at_bats)),
@@ -250,36 +305,76 @@ impl Render for TeamSeasonPage {
                 let nav = self.nav.clone();
                 let pit_cols = vec![
                     Col::element("Player", 240., move |p: &TeamPitcher, _| {
-                        widgets::player_link(SharedString::from(format!("pit-{}", p.player_id)), &p.player_id, format::text(p.full_name.as_deref()), p.is_hall_of_famer, &nav)
+                        widgets::player_link(
+                            SharedString::from(format!("pit-{}", p.player_id)),
+                            &p.player_id,
+                            format::text(p.full_name.as_deref()),
+                            p.is_hall_of_famer,
+                            &nav,
+                        )
                     }),
                     Col::num("G", 56., |p: &TeamPitcher| format::int(p.games)),
-                    Col::num("W-L", 72., |p: &TeamPitcher| format::record(p.wins, p.losses)),
+                    Col::num("W-L", 72., |p: &TeamPitcher| {
+                        format::record(p.wins, p.losses)
+                    }),
                     Col::num("ERA", 64., |p: &TeamPitcher| format::decimal2(p.era)),
                     Col::num("SO", 56., |p: &TeamPitcher| format::int(p.strikeouts)),
                     Col::num("SV", 56., |p: &TeamPitcher| format::int(p.saves)),
                 ];
                 let count_note = |shown: usize, total: usize| {
-                    if total > shown { format!("top {shown} of {total}") } else { format!("{total} players") }
+                    if total > shown {
+                        format!("top {shown} of {total}")
+                    } else {
+                        format!("{total} players")
+                    }
                 };
                 v_flex()
                     .gap_5()
                     .child(header)
                     .child(stats)
-                    .child(h_flex().w_full().gap_5().items_start().child(div().flex_1().child(park)).child(div().flex_1().child(managers)))
+                    .child(
+                        h_flex()
+                            .w_full()
+                            .gap_5()
+                            .items_start()
+                            .child(div().flex_1().child(park))
+                            .child(div().flex_1().child(managers)),
+                    )
                     .child(
                         v_flex()
                             .w_full()
                             .gap_5()
                             .child(
                                 div().w_full().child(
-                                    widgets::section_with("Batting", widgets::note(count_note(batters.len(), batter_total), cx), cx)
-                                        .child(grid("team-batters", bat_cols, &batters, cx)),
+                                    widgets::section_with(
+                                        "Batting",
+                                        widgets::note(count_note(batters.len(), batter_total), cx),
+                                        cx,
+                                    )
+                                    .child(grid(
+                                        "team-batters",
+                                        bat_cols,
+                                        &batters,
+                                        cx,
+                                    )),
                                 ),
                             )
                             .child(
                                 div().w_full().child(
-                                    widgets::section_with("Pitching", widgets::note(count_note(pitchers.len(), pitcher_total), cx), cx)
-                                        .child(grid("team-pitchers", pit_cols, &pitchers, cx)),
+                                    widgets::section_with(
+                                        "Pitching",
+                                        widgets::note(
+                                            count_note(pitchers.len(), pitcher_total),
+                                            cx,
+                                        ),
+                                        cx,
+                                    )
+                                    .child(grid(
+                                        "team-pitchers",
+                                        pit_cols,
+                                        &pitchers,
+                                        cx,
+                                    )),
                                 ),
                             ),
                     )
@@ -287,8 +382,16 @@ impl Render for TeamSeasonPage {
                     .into_any_element()
             }
             Loadable::Failed(message) => {
-                let message = if message.starts_with("No record") { "Season Not Found".to_string() } else { message.clone() };
-                widgets::error_state("season-error", &message, cx.listener(|this, _, window, cx| this.reload(window, cx)))
+                let message = if message.starts_with("No record") {
+                    "Season Not Found".to_string()
+                } else {
+                    message.clone()
+                };
+                widgets::error_state(
+                    "season-error",
+                    &message,
+                    cx.listener(|this, _, window, cx| this.reload(window, cx)),
+                )
             }
             _ => widgets::loading_state("Loading season…", cx),
         };

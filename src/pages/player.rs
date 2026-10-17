@@ -132,7 +132,9 @@ impl PlayerPage {
 
     fn name(&self) -> String {
         match &self.player {
-            Loadable::Ready(p) => format::full_name(p.first_name.as_deref(), p.last_name.as_deref()),
+            Loadable::Ready(p) => {
+                format::full_name(p.first_name.as_deref(), p.last_name.as_deref())
+            }
             _ => self.id.clone(),
         }
     }
@@ -143,9 +145,14 @@ impl PlayerPage {
         let batting = has(self.batting.ready().map(Vec::len));
         let pitching = has(self.pitching.ready().map(Vec::len));
         let fielding = has(self.fielding.ready().map(Vec::len));
-        let post = has(self.post_batting.ready().map(Vec::len)) || has(self.post_pitching.ready().map(Vec::len));
+        let post = has(self.post_batting.ready().map(Vec::len))
+            || has(self.post_pitching.ready().map(Vec::len));
         let is_pitcher = self.player.ready().is_some_and(|p| {
-            let pg = p.career_pitching.as_ref().and_then(|c| c.games).unwrap_or(0);
+            let pg = p
+                .career_pitching
+                .as_ref()
+                .and_then(|c| c.games)
+                .unwrap_or(0);
             let bg = p.career_batting.as_ref().and_then(|c| c.games).unwrap_or(0);
             pg > 0 && pg * 2 >= bg
         });
@@ -176,22 +183,36 @@ impl PlayerPage {
         })
     }
 
-    fn team_cell(&self, id: String, team: Option<&str>, label: Option<&str>, lg: Option<&str>, year: i32) -> AnyElement {
+    fn team_cell(
+        &self,
+        id: String,
+        team: Option<&str>,
+        label: Option<&str>,
+        lg: Option<&str>,
+        year: i32,
+    ) -> AnyElement {
         let label = format::text(label.or(team));
         match Self::team_route(team, lg, year) {
-            Some(route) => self.nav.button(SharedString::from(id), label, route).into_any_element(),
+            Some(route) => self
+                .nav
+                .button(SharedString::from(id), label, route)
+                .into_any_element(),
             None => label.into_any_element(),
         }
     }
 
     fn render_info(&self, p: &PlayerDetail, cx: &App) -> AnyElement {
-        let born_place = [p.birth_city.as_deref(), p.birth_state.as_deref(), p.birth_country.as_deref()]
-            .iter()
-            .flatten()
-            .filter(|s| !s.trim().is_empty())
-            .copied()
-            .collect::<Vec<_>>()
-            .join(", ");
+        let born_place = [
+            p.birth_city.as_deref(),
+            p.birth_state.as_deref(),
+            p.birth_country.as_deref(),
+        ]
+        .iter()
+        .flatten()
+        .filter(|s| !s.trim().is_empty())
+        .copied()
+        .collect::<Vec<_>>()
+        .join(", ");
         let born = match (p.birth_date.as_deref(), born_place.is_empty()) {
             (Some(d), false) => format!("{} in {born_place}", format::date(Some(d))),
             (Some(d), true) => format::date(Some(d)),
@@ -207,40 +228,70 @@ impl PlayerPage {
             _ => DASH.into(),
         };
         let mut rows = vec![
-            ("Full Name", format::text(p.given_name.as_deref().map(|g| format!("{g} {}", p.last_name.clone().unwrap_or_default())).as_deref())),
+            (
+                "Full Name",
+                format::text(
+                    p.given_name
+                        .as_deref()
+                        .map(|g| format!("{g} {}", p.last_name.clone().unwrap_or_default()))
+                        .as_deref(),
+                ),
+            ),
             ("Born", born),
         ];
-        if p.death_date.as_deref().is_some_and(|d| !d.trim().is_empty()) {
+        if p.death_date
+            .as_deref()
+            .is_some_and(|d| !d.trim().is_empty())
+        {
             rows.push(("Died", format::date(p.death_date.as_deref())));
         }
         rows.extend([
             ("Size", size),
-            ("B/T", format!("{} / {}", format::bats_throws(p.bats.as_deref()), format::bats_throws(p.throws.as_deref()))),
+            (
+                "B/T",
+                format!(
+                    "{} / {}",
+                    format::bats_throws(p.bats.as_deref()),
+                    format::bats_throws(p.throws.as_deref())
+                ),
+            ),
             ("Debut", format::year(p.debut_year)),
             ("Final Game", format::year(p.final_year)),
             ("Career", career),
         ]);
-        widgets::section("Player Info", cx).child(widgets::facts(rows, cx)).into_any_element()
+        widgets::section("Player Info", cx)
+            .child(widgets::facts(rows, cx))
+            .into_any_element()
     }
 
     fn render_teams(&self, p: &PlayerDetail, cx: &App) -> AnyElement {
         widgets::section("Teams", cx)
             .child(
-                v_flex().px_4().py_2().gap_1().children(p.teams.iter().map(|t| {
-                    h_flex()
-                        .gap_2()
-                        .justify_between()
-                        .text_sm()
-                        .child(div().min_w_0().truncate().child(format::text(t.team_name.as_deref().or(Some(&t.team_id)))))
-                        .child(
-                            div()
-                                .flex_shrink_0()
-                                .text_color(cx.theme().muted_foreground)
-                                .child(format::year_span(t.first_year, t.last_year)),
-                        )
-                })),
+                v_flex()
+                    .px_4()
+                    .py_2()
+                    .gap_1()
+                    .children(p.teams.iter().map(|t| {
+                        h_flex()
+                            .gap_2()
+                            .justify_between()
+                            .text_sm()
+                            .child(
+                                div().min_w_0().truncate().child(format::text(
+                                    t.team_name.as_deref().or(Some(&t.team_id)),
+                                )),
+                            )
+                            .child(
+                                div()
+                                    .flex_shrink_0()
+                                    .text_color(cx.theme().muted_foreground)
+                                    .child(format::year_span(t.first_year, t.last_year)),
+                            )
+                    })),
             )
-            .when(p.teams.is_empty(), |this| this.child(div().p_4().child(widgets::note("No team history.", cx))))
+            .when(p.teams.is_empty(), |this| {
+                this.child(div().p_4().child(widgets::note("No team history.", cx)))
+            })
             .into_any_element()
     }
 
@@ -252,28 +303,47 @@ impl PlayerPage {
         };
         if awards.is_empty() {
             return widgets::section("Honors", cx)
-                .child(div().px_4().py_3().child(widgets::note("No awards on record.", cx)))
+                .child(
+                    div()
+                        .px_4()
+                        .py_3()
+                        .child(widgets::note("No awards on record.", cx)),
+                )
                 .into_any_element();
         }
         let mut sorted = awards.clone();
         sorted.sort_by(|a, b| a.year.cmp(&b.year).then(a.award_id.cmp(&b.award_id)));
-        let shown = if self.show_all_awards { sorted.len() } else { sorted.len().min(10) };
+        let shown = if self.show_all_awards {
+            sorted.len()
+        } else {
+            sorted.len().min(10)
+        };
         widgets::section_with(
             "Honors",
             widgets::note(format!("{} awards", sorted.len()), cx),
             cx,
         )
         .child(
-            v_flex().px_4().py_2().gap_1().children(sorted.iter().take(shown).map(|a| {
-                h_flex()
-                    .gap_2()
-                    .text_sm()
-                    .child(div().w(px(40.)).flex_shrink_0().font_bold().child(a.year.to_string()))
-                    .child(div().flex_1().min_w_0().child(match a.lg_id.as_deref() {
-                        Some(lg) if !lg.is_empty() => format!("{} ({lg})", a.award_id),
-                        _ => a.award_id.clone(),
-                    }))
-            })),
+            v_flex()
+                .px_4()
+                .py_2()
+                .gap_1()
+                .children(sorted.iter().take(shown).map(|a| {
+                    h_flex()
+                        .gap_2()
+                        .text_sm()
+                        .child(
+                            div()
+                                .w(px(40.))
+                                .flex_shrink_0()
+                                .font_bold()
+                                .child(a.year.to_string()),
+                        )
+                        .child(div().flex_1().min_w_0().child(match a.lg_id.as_deref() {
+                            Some(lg) if !lg.is_empty() => format!("{} ({lg})", a.award_id),
+                            _ => a.award_id.clone(),
+                        }))
+                })),
         )
         .when(sorted.len() > 10, |this| {
             this.child(
@@ -298,9 +368,13 @@ impl PlayerPage {
 
     fn render_career(&self, p: &PlayerDetail, cx: &App) -> AnyElement {
         let mut col = v_flex().gap_4().w_full();
-        if let Some(b) = p.career_batting.as_ref().filter(|b| b.at_bats.unwrap_or(0) > 0) {
-            col = col.child(widgets::section("Career Batting", cx).child(
-                div().p_3().child(widgets::stat_row(
+        if let Some(b) = p
+            .career_batting
+            .as_ref()
+            .filter(|b| b.at_bats.unwrap_or(0) > 0)
+        {
+            col = col.child(
+                widgets::section("Career Batting", cx).child(div().p_3().child(widgets::stat_row(
                     vec![
                         ("G", format::int(b.games)),
                         ("AVG", format::rate(b.batting_average)),
@@ -310,23 +384,29 @@ impl PlayerPage {
                         ("OPS", format::rate(b.ops)),
                     ],
                     cx,
-                )),
-            ));
+                ))),
+            );
         }
-        if let Some(pi) = p.career_pitching.as_ref().filter(|c| c.innings_pitched.unwrap_or(0.) > 0.) {
-            col = col.child(widgets::section("Career Pitching", cx).child(
-                div().p_3().child(widgets::stat_row(
-                    vec![
-                        ("W-L", format::record(pi.wins, pi.losses)),
-                        ("ERA", format::decimal2(pi.era)),
-                        ("G", format::int(pi.games)),
-                        ("SO", format::int(pi.strikeouts)),
-                        ("SV", format::int(pi.saves)),
-                        ("WHIP", format::decimal2(pi.whip)),
-                    ],
-                    cx,
+        if let Some(pi) = p
+            .career_pitching
+            .as_ref()
+            .filter(|c| c.innings_pitched.unwrap_or(0.) > 0.)
+        {
+            col = col.child(
+                widgets::section("Career Pitching", cx).child(div().p_3().child(
+                    widgets::stat_row(
+                        vec![
+                            ("W-L", format::record(pi.wins, pi.losses)),
+                            ("ERA", format::decimal2(pi.era)),
+                            ("G", format::int(pi.games)),
+                            ("SO", format::int(pi.strikeouts)),
+                            ("SV", format::int(pi.saves)),
+                            ("WHIP", format::decimal2(pi.whip)),
+                        ],
+                        cx,
+                    ),
                 )),
-            ));
+            );
         }
         col.into_any_element()
     }
@@ -337,7 +417,13 @@ impl PlayerPage {
         let columns = vec![
             Col::text("Year", 64., |s: &BattingSeason| s.year.to_string()),
             Col::element("Team", 200., |s: &BattingSeason, ix| {
-                self.team_cell(format!("bat-team-{}-{ix}", s.year), s.team_id.as_deref(), s.team_name.as_deref(), s.lg_id.as_deref(), s.year)
+                self.team_cell(
+                    format!("bat-team-{}-{ix}", s.year),
+                    s.team_id.as_deref(),
+                    s.team_name.as_deref(),
+                    s.lg_id.as_deref(),
+                    s.year,
+                )
             }),
             Col::num("G", 56., |s: &BattingSeason| format::int(s.games)),
             Col::num("AB", 64., |s: &BattingSeason| format::int(s.at_bats)),
@@ -346,7 +432,9 @@ impl PlayerPage {
             Col::num("3B", 56., |s: &BattingSeason| format::int(s.triples)),
             Col::num("HR", 56., |s: &BattingSeason| format::int(s.home_runs)),
             Col::num("R", 56., |s: &BattingSeason| format::int(s.runs)),
-            Col::num("AVG", 64., |s: &BattingSeason| format::rate(s.batting_average)),
+            Col::num("AVG", 64., |s: &BattingSeason| {
+                format::rate(s.batting_average)
+            }),
         ];
         widgets::section("Batting Season by Season", cx)
             .child(grid("batting-seasons", columns, &rows, cx))
@@ -359,7 +447,13 @@ impl PlayerPage {
         let seasons = vec![
             Col::text("Year", 64., |s: &PitchingSeason| s.year.to_string()),
             Col::element("Team", 200., |s: &PitchingSeason, ix| {
-                self.team_cell(format!("pit-team-{}-{ix}", s.year), s.team_id.as_deref(), s.team_name.as_deref(), s.lg_id.as_deref(), s.year)
+                self.team_cell(
+                    format!("pit-team-{}-{ix}", s.year),
+                    s.team_id.as_deref(),
+                    s.team_name.as_deref(),
+                    s.lg_id.as_deref(),
+                    s.year,
+                )
             }),
             Col::num("W", 48., |s: &PitchingSeason| format::int(s.wins)),
             Col::num("L", 48., |s: &PitchingSeason| format::int(s.losses)),
@@ -367,16 +461,26 @@ impl PlayerPage {
             Col::num("G", 48., |s: &PitchingSeason| format::int(s.games)),
             Col::num("GS", 48., |s: &PitchingSeason| format::int(s.games_started)),
             Col::num("SV", 48., |s: &PitchingSeason| format::int(s.saves)),
-            Col::num("IP", 72., |s: &PitchingSeason| format::innings(s.innings_pitched)),
+            Col::num("IP", 72., |s: &PitchingSeason| {
+                format::innings(s.innings_pitched)
+            }),
             Col::num("SO", 56., |s: &PitchingSeason| format::int(s.strikeouts)),
             Col::num("BB", 56., |s: &PitchingSeason| format::int(s.walks)),
         ];
         let advanced = vec![
             Col::text("Year", 64., |s: &PitchingSeason| s.year.to_string()),
-            Col::text("Lg", 56., |s: &PitchingSeason| format::text(s.lg_id.as_deref())),
-            Col::num("IP", 72., |s: &PitchingSeason| format::innings(s.innings_pitched)),
-            Col::num("K/9", 64., |s: &PitchingSeason| format::decimal2(per_nine(s.strikeouts, s.innings_pitched))),
-            Col::num("BB/9", 64., |s: &PitchingSeason| format::decimal2(per_nine(s.walks, s.innings_pitched))),
+            Col::text("Lg", 56., |s: &PitchingSeason| {
+                format::text(s.lg_id.as_deref())
+            }),
+            Col::num("IP", 72., |s: &PitchingSeason| {
+                format::innings(s.innings_pitched)
+            }),
+            Col::num("K/9", 64., |s: &PitchingSeason| {
+                format::decimal2(per_nine(s.strikeouts, s.innings_pitched))
+            }),
+            Col::num("BB/9", 64., |s: &PitchingSeason| {
+                format::decimal2(per_nine(s.walks, s.innings_pitched))
+            }),
             Col::num("WHIP", 72., |s: &PitchingSeason| {
                 whip(s.walks, s.hits, s.innings_pitched)
                     .map(|v| format!("{v:.3}"))
@@ -404,31 +508,63 @@ impl PlayerPage {
         let career = vec![
             Col::text("Pos", 64., |t: &PositionTotals| t.position.clone()),
             Col::num("G", 64., |t: &PositionTotals| format::int(Some(t.games))),
-            Col::num("PO", 64., |t: &PositionTotals| format::int(Some(t.put_outs))),
+            Col::num("PO", 64., |t: &PositionTotals| {
+                format::int(Some(t.put_outs))
+            }),
             Col::num("A", 64., |t: &PositionTotals| format::int(Some(t.assists))),
             Col::num("E", 56., |t: &PositionTotals| format::int(Some(t.errors))),
-            Col::num("DP", 56., |t: &PositionTotals| format::int(Some(t.double_plays))),
+            Col::num("DP", 56., |t: &PositionTotals| {
+                format::int(Some(t.double_plays))
+            }),
             Col::num("FPct", 64., |t: &PositionTotals| {
-                format::rate(fielding_pct(Some(t.put_outs), Some(t.assists), Some(t.errors)))
+                format::rate(fielding_pct(
+                    Some(t.put_outs),
+                    Some(t.assists),
+                    Some(t.errors),
+                ))
             }),
         ];
         let seasons = vec![
             Col::text("Year", 64., |s: &FieldingSeason| s.year.to_string()),
             Col::element("Team", 96., |s: &FieldingSeason, ix| {
-                self.team_cell(format!("fld-team-{}-{ix}", s.year), s.team_id.as_deref(), None, s.lg_id.as_deref(), s.year)
+                self.team_cell(
+                    format!("fld-team-{}-{ix}", s.year),
+                    s.team_id.as_deref(),
+                    None,
+                    s.lg_id.as_deref(),
+                    s.year,
+                )
             }),
-            Col::text("Pos", 56., |s: &FieldingSeason| format::text(s.position.as_deref())),
+            Col::text("Pos", 56., |s: &FieldingSeason| {
+                format::text(s.position.as_deref())
+            }),
             Col::num("G", 56., |s: &FieldingSeason| format::int(s.games)),
             Col::num("PO", 64., |s: &FieldingSeason| format::int(s.put_outs)),
             Col::num("A", 56., |s: &FieldingSeason| format::int(s.assists)),
             Col::num("E", 56., |s: &FieldingSeason| format::int(s.errors)),
             Col::num("DP", 56., |s: &FieldingSeason| format::int(s.double_plays)),
-            Col::num("FPct", 64., |s: &FieldingSeason| format::rate(fielding_pct(s.put_outs, s.assists, s.errors))),
+            Col::num("FPct", 64., |s: &FieldingSeason| {
+                format::rate(fielding_pct(s.put_outs, s.assists, s.errors))
+            }),
         ];
         v_flex()
             .gap_4()
-            .child(widgets::section("Career Fielding by Position", cx).child(grid("fielding-career", career, &totals, cx)))
-            .child(widgets::section("Fielding Season by Season", cx).child(grid("fielding-seasons", seasons, &rows, cx)))
+            .child(
+                widgets::section("Career Fielding by Position", cx).child(grid(
+                    "fielding-career",
+                    career,
+                    &totals,
+                    cx,
+                )),
+            )
+            .child(
+                widgets::section("Fielding Season by Season", cx).child(grid(
+                    "fielding-seasons",
+                    seasons,
+                    &rows,
+                    cx,
+                )),
+            )
             .into_any_element()
     }
 
@@ -440,45 +576,87 @@ impl PlayerPage {
         let year_cell = |prefix: &'static str| {
             move |year: i32, ix: usize| {
                 self.nav
-                    .button(SharedString::from(format!("{prefix}-{year}-{ix}")), year.to_string(), Route::Postseason { year: Some(year) })
+                    .button(
+                        SharedString::from(format!("{prefix}-{year}-{ix}")),
+                        year.to_string(),
+                        Route::Postseason { year: Some(year) },
+                    )
                     .into_any_element()
             }
         };
         let bat_year = year_cell("psb-year");
         let pit_year = year_cell("psp-year");
         let bat_cols = vec![
-            Col::element("Year", 72., move |s: &PostseasonBatting, ix| bat_year(s.year, ix)),
-            Col::text("Round", 72., |s: &PostseasonBatting| format::text(s.round.as_deref())),
+            Col::element("Year", 72., move |s: &PostseasonBatting, ix| {
+                bat_year(s.year, ix)
+            }),
+            Col::text("Round", 72., |s: &PostseasonBatting| {
+                format::text(s.round.as_deref())
+            }),
             Col::element("Team", 80., |s: &PostseasonBatting, ix| {
-                self.team_cell(format!("psb-team-{}-{ix}", s.year), s.team_id.as_deref(), None, s.lg_id.as_deref(), s.year)
+                self.team_cell(
+                    format!("psb-team-{}-{ix}", s.year),
+                    s.team_id.as_deref(),
+                    None,
+                    s.lg_id.as_deref(),
+                    s.year,
+                )
             }),
             Col::num("G", 48., |s: &PostseasonBatting| format::int(s.games)),
             Col::num("AB", 56., |s: &PostseasonBatting| format::int(s.at_bats)),
             Col::num("H", 48., |s: &PostseasonBatting| format::int(s.hits)),
             Col::num("HR", 48., |s: &PostseasonBatting| format::int(s.home_runs)),
             Col::num("RBI", 56., |s: &PostseasonBatting| format::int(s.rbi)),
-            Col::num("AVG", 64., |s: &PostseasonBatting| format::rate(s.batting_average)),
+            Col::num("AVG", 64., |s: &PostseasonBatting| {
+                format::rate(s.batting_average)
+            }),
         ];
         let pit_cols = vec![
-            Col::element("Year", 72., move |s: &PostseasonPitching, ix| pit_year(s.year, ix)),
-            Col::text("Round", 72., |s: &PostseasonPitching| format::text(s.round.as_deref())),
+            Col::element("Year", 72., move |s: &PostseasonPitching, ix| {
+                pit_year(s.year, ix)
+            }),
+            Col::text("Round", 72., |s: &PostseasonPitching| {
+                format::text(s.round.as_deref())
+            }),
             Col::element("Team", 80., |s: &PostseasonPitching, ix| {
-                self.team_cell(format!("psp-team-{}-{ix}", s.year), s.team_id.as_deref(), None, s.lg_id.as_deref(), s.year)
+                self.team_cell(
+                    format!("psp-team-{}-{ix}", s.year),
+                    s.team_id.as_deref(),
+                    None,
+                    s.lg_id.as_deref(),
+                    s.year,
+                )
             }),
             Col::num("G", 48., |s: &PostseasonPitching| format::int(s.games)),
-            Col::num("W-L", 64., |s: &PostseasonPitching| format::record(s.wins, s.losses)),
+            Col::num("W-L", 64., |s: &PostseasonPitching| {
+                format::record(s.wins, s.losses)
+            }),
             Col::num("SV", 48., |s: &PostseasonPitching| format::int(s.saves)),
-            Col::num("IP", 64., |s: &PostseasonPitching| format::innings(s.innings_pitched)),
-            Col::num("SO", 48., |s: &PostseasonPitching| format::int(s.strikeouts)),
+            Col::num("IP", 64., |s: &PostseasonPitching| {
+                format::innings(s.innings_pitched)
+            }),
+            Col::num("SO", 48., |s: &PostseasonPitching| {
+                format::int(s.strikeouts)
+            }),
             Col::num("ERA", 64., |s: &PostseasonPitching| format::decimal2(s.era)),
         ];
         v_flex()
             .gap_4()
             .when(!batting.is_empty(), |this| {
-                this.child(widgets::section("Postseason Batting", cx).child(grid("post-batting", bat_cols, &batting, cx)))
+                this.child(widgets::section("Postseason Batting", cx).child(grid(
+                    "post-batting",
+                    bat_cols,
+                    &batting,
+                    cx,
+                )))
             })
             .when(!pitching.is_empty(), |this| {
-                this.child(widgets::section("Postseason Pitching", cx).child(grid("post-pitching", pit_cols, &pitching, cx)))
+                this.child(widgets::section("Postseason Pitching", cx).child(grid(
+                    "post-pitching",
+                    pit_cols,
+                    &pitching,
+                    cx,
+                )))
             })
             .into_any_element()
     }
@@ -497,7 +675,11 @@ impl PlayerPage {
             return if still_loading {
                 widgets::loading_state("Loading statistics…", cx)
             } else {
-                widgets::empty_state("No Statistics Available", "No season statistics are on record for this player.", cx)
+                widgets::empty_state(
+                    "No Statistics Available",
+                    "No season statistics are on record for this player.",
+                    cx,
+                )
             };
         }
         let active = self.tab.filter(|t| tabs.contains(t)).unwrap_or(tabs[0]);
@@ -583,7 +765,10 @@ impl Render for PlayerPage {
                             .xsmall()
                             .tooltip("Hall of Fame class")
                             .child(widgets::hof_year_tag(year))
-                            .on_click(self.nav.to(Route::HallOfFame { year, category: None }))
+                            .on_click(self.nav.to(Route::HallOfFame {
+                                year,
+                                category: None,
+                            }))
                             .into_any_element(),
                     );
                 }
@@ -591,13 +776,22 @@ impl Render for PlayerPage {
                     .small()
                     .outline()
                     .label("Compare")
-                    .on_click(self.nav.to(Route::Compare { first: Some(p.player_id.clone()), second: None }));
+                    .on_click(self.nav.to(Route::Compare {
+                        first: Some(p.player_id.clone()),
+                        second: None,
+                    }));
                 let header = h_flex()
                     .w_full()
                     .justify_between()
                     .items_end()
                     .gap_3()
-                    .child(widgets::page_header(Some("Player"), self.name(), Some(format::year_span(p.debut_year, p.final_year).into()), badges, cx))
+                    .child(widgets::page_header(
+                        Some("Player"),
+                        self.name(),
+                        Some(format::year_span(p.debut_year, p.final_year).into()),
+                        badges,
+                        cx,
+                    ))
                     .child(compare);
                 let left = v_flex()
                     .w(px(340.))
@@ -615,14 +809,31 @@ impl Render for PlayerPage {
                 v_flex()
                     .gap_5()
                     .child(header)
-                    .child(h_flex().w_full().gap_5().items_start().child(left).child(right))
+                    .child(
+                        h_flex()
+                            .w_full()
+                            .gap_5()
+                            .items_start()
+                            .child(left)
+                            .child(right),
+                    )
                     .into_any_element()
             }
             Loadable::Failed(message) => {
                 let message = message.clone();
                 v_flex()
-                    .child(widgets::page_header(Some("Player"), self.id.clone(), None, vec![], cx))
-                    .child(widgets::error_state("player-error", &message, cx.listener(|this, _, window, cx| this.reload(window, cx))))
+                    .child(widgets::page_header(
+                        Some("Player"),
+                        self.id.clone(),
+                        None,
+                        vec![],
+                        cx,
+                    ))
+                    .child(widgets::error_state(
+                        "player-error",
+                        &message,
+                        cx.listener(|this, _, window, cx| this.reload(window, cx)),
+                    ))
                     .into_any_element()
             }
             _ => widgets::loading_state("Loading player…", cx),
@@ -637,9 +848,18 @@ mod tests {
 
     #[test]
     fn innings_notation_converts_thirds() {
-        assert_eq!(true_innings(Some(200.2)).map(|v| (v * 3.).round()), Some(602.));
+        assert_eq!(
+            true_innings(Some(200.2)).map(|v| (v * 3.).round()),
+            Some(602.)
+        );
         assert_eq!(per_nine(Some(9), Some(9.0)), Some(9.0));
-        assert_eq!(whip(Some(3), Some(12), Some(9.0)).map(|v| (v * 1000.).round()), Some(1667.));
-        assert_eq!(fielding_pct(Some(39), Some(1), Some(2)).map(|v| (v * 1000.).round()), Some(952.));
+        assert_eq!(
+            whip(Some(3), Some(12), Some(9.0)).map(|v| (v * 1000.).round()),
+            Some(1667.)
+        );
+        assert_eq!(
+            fielding_pct(Some(39), Some(1), Some(2)).map(|v| (v * 1000.).round()),
+            Some(952.)
+        );
     }
 }

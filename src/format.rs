@@ -116,8 +116,18 @@ pub fn height(inches: Option<&str>) -> String {
 /// Lahman dates arrive as `Y-M-D` without zero padding; render them long form.
 pub fn date(value: Option<&str>) -> String {
     const MONTHS: [&str; 12] = [
-        "January", "February", "March", "April", "May", "June", "July", "August", "September",
-        "October", "November", "December",
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
     ];
     let Some(raw) = value.filter(|v| !v.trim().is_empty()) else {
         return DASH.into();
