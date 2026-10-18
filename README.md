@@ -49,7 +49,7 @@ cargo bundle --release   # output: target/release/bundle/osx/ and target/release
 Releases are built by `.github/workflows/release.yml`. To cut one, bump `version` in `Cargo.toml`, merge it, then push a matching tag:
 
 ```sh
-git tag v0.1.1 && git push origin v0.1.1
+git tag v0.2.0 && git push origin v0.2.0
 ```
 
 The workflow builds the app on each platform and publishes these to a GitHub release, with `SHA256SUMS.txt`:
