@@ -75,6 +75,20 @@ fn main() {
                 first: Some(a.to_string()),
                 second: Some(b.to_string()),
             },
+            ["managers"] => Route::Managers,
+            ["manager", id] => Route::Manager { id: id.to_string() },
+            ["allstar"] => Route::AllStar,
+            ["allstar", y] => Route::AllStarYear {
+                year: y.parse().expect("year"),
+            },
+            ["negro"] => Route::NegroLeagues,
+            ["negro", lg] => Route::NegroLeague {
+                lg_id: lg.to_string(),
+            },
+            ["negro", lg, y] => Route::NegroLeagueSeason {
+                lg_id: lg.to_string(),
+                year: y.parse().expect("year"),
+            },
             ["about"] => Route::Reference(ReferencePage::About),
             ["glossary"] => Route::Reference(ReferencePage::Glossary),
             ["surviving"] => Route::Reference(ReferencePage::SurvivingRecords),

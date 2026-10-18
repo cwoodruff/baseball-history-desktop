@@ -396,3 +396,37 @@ pub fn pager(
         })
         .into_any_element()
 }
+
+/// `« 1932` / `1934 »` buttons that step to the nearest season with data.
+/// Each button is left out when there is no season in that direction.
+pub fn year_steps(
+    id: &str,
+    previous: Option<i32>,
+    next: Option<i32>,
+    route: impl Fn(i32) -> Route,
+    nav: &Navigator,
+) -> AnyElement {
+    h_flex()
+        .gap_2()
+        .when_some(previous, |this, year| {
+            this.child(
+                Button::new(SharedString::from(format!("{id}-prev")))
+                    .small()
+                    .outline()
+                    .label(format!("« {year}"))
+                    .tooltip("Previous season")
+                    .on_click(nav.to(route(year))),
+            )
+        })
+        .when_some(next, |this, year| {
+            this.child(
+                Button::new(SharedString::from(format!("{id}-next")))
+                    .small()
+                    .outline()
+                    .label(format!("{year} »"))
+                    .tooltip("Next season")
+                    .on_click(nav.to(route(year))),
+            )
+        })
+        .into_any_element()
+}

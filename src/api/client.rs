@@ -128,19 +128,8 @@ impl ApiClient {
 
     // MARK: Players
 
-    pub fn players(
-        &self,
-        letter: Option<char>,
-        page: u32,
-        page_size: u32,
-    ) -> Result<Paged<PlayerSummary>> {
-        self.get(
-            "/players",
-            Query::new()
-                .opt("letter", letter)
-                .set("page", page)
-                .set("pageSize", page_size),
-        )
+    pub fn players(&self, request: &PlayerQuery) -> Result<Paged<PlayerSummary>> {
+        self.get("/players", request.query())
     }
 
     pub fn player(&self, id: &str) -> Result<PlayerDetail> {
@@ -157,6 +146,28 @@ impl ApiClient {
 
     pub fn player_fielding(&self, id: &str) -> Result<Vec<FieldingSeason>> {
         self.get(&format!("/players/{}/fielding", seg(id)), Query::new())
+    }
+
+    pub fn player_batting_advanced(&self, id: &str) -> Result<Vec<AdvancedBatting>> {
+        self.get(
+            &format!("/players/{}/batting/advanced", seg(id)),
+            Query::new(),
+        )
+    }
+
+    pub fn player_pitching_advanced(&self, id: &str) -> Result<Vec<AdvancedPitching>> {
+        self.get(
+            &format!("/players/{}/pitching/advanced", seg(id)),
+            Query::new(),
+        )
+    }
+
+    pub fn player_managing(&self, id: &str) -> Result<Vec<ManagerSeason>> {
+        self.get(&format!("/players/{}/managing", seg(id)), Query::new())
+    }
+
+    pub fn player_all_star(&self, id: &str) -> Result<Vec<PlayerAllStar>> {
+        self.get(&format!("/players/{}/all-star", seg(id)), Query::new())
     }
 
     pub fn player_awards(&self, id: &str) -> Result<Vec<PlayerAward>> {
@@ -347,6 +358,110 @@ impl ApiClient {
             Query::new(),
         )
     }
+
+    // MARK: Managers
+
+    /// Managers ranked by career wins, or by full name when `by_name`.
+    pub fn managers(
+        &self,
+        q: Option<&str>,
+        by_name: bool,
+        page: u32,
+        page_size: u32,
+    ) -> Result<Paged<ManagerSummary>> {
+        self.get(
+            "/managers",
+            Query::new()
+                .opt("q", q)
+                .set("sort", if by_name { "name" } else { "wins" })
+                .set("page", page)
+                .set("pageSize", page_size),
+        )
+    }
+
+    pub fn manager(&self, id: &str) -> Result<ManagerDetail> {
+        self.get(&format!("/managers/{}", seg(id)), Query::new())
+    }
+
+    // MARK: All-Star Games
+
+    pub fn all_star_seasons(&self) -> Result<Vec<AllStarSeason>> {
+        self.get("/all-star", Query::new())
+    }
+
+    pub fn all_star_year(&self, year: i32) -> Result<AllStarYear> {
+        self.get(&format!("/all-star/{year}"), Query::new())
+    }
+
+    // MARK: Negro Leagues
+
+    pub fn negro_leagues(&self) -> Result<Vec<NegroLeague>> {
+        self.get("/negro-leagues", Query::new())
+    }
+
+    pub fn negro_league(&self, lg_id: &str) -> Result<NegroLeagueDetail> {
+        self.get(&format!("/negro-leagues/{}", seg(lg_id)), Query::new())
+    }
+
+    pub fn negro_league_season(&self, lg_id: &str, year: i32) -> Result<NegroLeagueSeason> {
+        self.get(
+            &format!("/negro-leagues/{}/{year}", seg(lg_id)),
+            Query::new(),
+        )
+    }
+
+    // MARK: This Day in Baseball
+
+    /// Birthdays, debuts and final games on `month`/`day` of any year.
+    pub fn this_day(&self, month: u32, day: u32, limit: u32) -> Result<ThisDay> {
+        self.get(
+            "/this-day",
+            Query::new()
+                .set("date", format!("{month:02}-{day:02}"))
+                .set("limit", limit),
+        )
+    }
+}
+
+/// Filters for the Players browser. A name query searches every letter.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PlayerQuery {
+    pub letter: char,
+    pub q: Option<String>,
+    /// Position code (`P`, `C`, `1B`, ..., `OF`, `DH`).
+    pub pos: Option<String>,
+    /// First year of a decade (1990 = the 1990s).
+    pub era: Option<i32>,
+    /// `name`, `hr`, `hits` or `games`.
+    pub sort: String,
+    pub page: u32,
+    pub page_size: u32,
+}
+
+impl PlayerQuery {
+    /// One page of players whose last name starts with `letter`, by name.
+    pub fn letter(letter: char, page: u32, page_size: u32) -> Self {
+        Self {
+            letter,
+            q: None,
+            pos: None,
+            era: None,
+            sort: "name".into(),
+            page,
+            page_size,
+        }
+    }
+
+    fn query(&self) -> Query {
+        Query::new()
+            .opt("letter", self.q.is_none().then_some(self.letter))
+            .opt("q", self.q.as_deref())
+            .opt("pos", self.pos.as_deref())
+            .opt("era", self.era)
+            .set("sort", &self.sort)
+            .set("page", self.page)
+            .set("pageSize", self.page_size)
+    }
 }
 
 /// Filters shared by the batting and pitching leaderboards.
@@ -415,6 +530,25 @@ mod tests {
         assert!(encoded.contains("minIp=100"));
         assert!(encoded.contains("fromYear=1920"));
         assert!(!encoded.contains("toYear"));
+    }
+
+    #[test]
+    fn player_query_drops_letter_while_searching() {
+        let mut request = PlayerQuery {
+            letter: 'R',
+            q: None,
+            pos: Some("OF".into()),
+            era: Some(1920),
+            sort: "hr".into(),
+            page: 1,
+            page_size: 48,
+        };
+        assert_eq!(
+            request.query().encode(),
+            "?letter=R&pos=OF&era=1920&sort=hr&page=1&pageSize=48"
+        );
+        request.q = Some("ruth".into());
+        assert!(request.query().encode().starts_with("?q=ruth&pos=OF"));
     }
 
     #[test]

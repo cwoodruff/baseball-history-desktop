@@ -17,7 +17,7 @@ use crate::format::{self, DASH};
 use crate::loader::{self, Loadable};
 use crate::nav::Navigator;
 use crate::pages::Page;
-use crate::route::Route;
+use crate::route::{ReferencePage, Route};
 use crate::ui::grid::{Col, grid};
 use crate::ui::widgets;
 
@@ -27,6 +27,7 @@ enum StatTab {
     Pitching,
     Fielding,
     Postseason,
+    Managing,
 }
 
 impl StatTab {
@@ -36,6 +37,7 @@ impl StatTab {
             StatTab::Pitching => "Pitching",
             StatTab::Fielding => "Fielding",
             StatTab::Postseason => "Postseason",
+            StatTab::Managing => "Managing",
         }
     }
 }
@@ -51,27 +53,13 @@ pub struct PlayerPage {
     awards: Loadable<Vec<PlayerAward>>,
     post_batting: Loadable<Vec<PostseasonBatting>>,
     post_pitching: Loadable<Vec<PostseasonPitching>>,
+    advanced_batting: Loadable<Vec<AdvancedBatting>>,
+    advanced_pitching: Loadable<Vec<AdvancedPitching>>,
+    managing: Loadable<Vec<ManagerSeason>>,
+    all_star: Loadable<Vec<PlayerAllStar>>,
     tab: Option<StatTab>,
     show_all_awards: bool,
     _tasks: Vec<Task<()>>,
-}
-
-/// Lahman innings (200.2 = 200⅔) as a true number of innings.
-fn true_innings(ip: Option<f64>) -> Option<f64> {
-    let ip = ip?;
-    let whole = ip.trunc();
-    let outs = ((ip - whole) * 10.).round();
-    Some(whole + outs / 3.)
-}
-
-fn per_nine(count: Option<i64>, ip: Option<f64>) -> Option<f64> {
-    let innings = true_innings(ip)?;
-    (innings > 0.).then(|| count.unwrap_or(0) as f64 * 9. / innings)
-}
-
-fn whip(walks: Option<i64>, hits: Option<i64>, ip: Option<f64>) -> Option<f64> {
-    let innings = true_innings(ip)?;
-    (innings > 0.).then(|| (walks.unwrap_or(0) + hits.unwrap_or(0)) as f64 / innings)
 }
 
 fn fielding_pct(po: Option<i64>, a: Option<i64>, e: Option<i64>) -> Option<f64> {
@@ -122,6 +110,10 @@ impl PlayerPage {
             awards: Loadable::Idle,
             post_batting: Loadable::Idle,
             post_pitching: Loadable::Idle,
+            advanced_batting: Loadable::Idle,
+            advanced_pitching: Loadable::Idle,
+            managing: Loadable::Idle,
+            all_star: Loadable::Idle,
             tab: None,
             show_all_awards: false,
             _tasks: Vec::new(),
@@ -171,6 +163,9 @@ impl PlayerPage {
         }
         if post {
             tabs.push(StatTab::Postseason);
+        }
+        if has(self.managing.ready().map(Vec::len)) {
+            tabs.push(StatTab::Managing);
         }
         tabs
     }
@@ -295,12 +290,69 @@ impl PlayerPage {
             .into_any_element()
     }
 
+    /// `12 x All-Star`, then each selection year linking to that season's rosters.
+    fn render_all_star(&self, cx: &App) -> Option<AnyElement> {
+        let count = self.player.ready()?.all_star_selections;
+        if count <= 0 {
+            return None;
+        }
+        let mut years: Vec<i32> = self
+            .all_star
+            .ready()
+            .map(|rows| rows.iter().map(|r| r.year).collect())
+            .unwrap_or_default();
+        years.sort_unstable_by(|a, b| b.cmp(a));
+        years.dedup();
+        Some(
+            v_flex()
+                .px_4()
+                .pt_3()
+                .gap_2()
+                .child(
+                    h_flex().child(
+                        div()
+                            .px_2()
+                            .py_0p5()
+                            .rounded(cx.theme().radius)
+                            .bg(widgets::brand_navy())
+                            .text_color(white())
+                            .text_sm()
+                            .font_bold()
+                            .child(format!("{count} x All-Star")),
+                    ),
+                )
+                .when(!years.is_empty(), |this| {
+                    this.child(
+                        h_flex()
+                            .flex_wrap()
+                            .gap_x_1()
+                            .children(years.into_iter().map(|year| {
+                                self.nav.button(
+                                    SharedString::from(format!("all-star-{year}")),
+                                    year.to_string(),
+                                    Route::AllStarYear { year },
+                                )
+                            })),
+                    )
+                })
+                .into_any_element(),
+        )
+    }
+
     fn render_honors(&self, cx: &mut Context<Self>) -> AnyElement {
+        let all_star = self.render_all_star(cx);
         let Some(awards) = self.awards.ready() else {
             return widgets::section("Honors", cx)
+                .children(all_star)
                 .child(widgets::loading_state("Loading awards…", cx))
                 .into_any_element();
         };
+        if awards.is_empty() && all_star.is_some() {
+            return widgets::section("Honors", cx)
+                .children(all_star)
+                .child(div().h_3())
+                .into_any_element();
+        }
         if awards.is_empty() {
             return widgets::section("Honors", cx)
                 .child(
@@ -323,6 +375,7 @@ impl PlayerPage {
             widgets::note(format!("{} awards", sorted.len()), cx),
             cx,
         )
+        .children(all_star)
         .child(
             v_flex()
                 .px_4()
@@ -373,18 +426,47 @@ impl PlayerPage {
             .as_ref()
             .filter(|b| b.at_bats.unwrap_or(0) > 0)
         {
+            let mut boxes = vec![
+                ("G", format::int(b.games)),
+                ("AVG", format::rate(b.batting_average)),
+                ("H", format::int(b.hits)),
+                ("HR", format::int(b.home_runs)),
+                ("RBI", format::int(b.rbi)),
+                ("OPS", format::rate(b.ops)),
+            ];
+            if let Some(index) = p.career_ops_index {
+                boxes.push(("OPS vs Lg", index.to_string()));
+            }
+            // The web also shows how far short of the threshold a career falls;
+            // the API reports only whether it qualifies.
+            let qualified = (p.career_qualified == Some(true)).then(|| {
+                h_flex()
+                    .id("career-qualified")
+                    .justify_center()
+                    .gap_1()
+                    .tooltip(|window, cx| {
+                        gpui_kit::component::tooltip::Tooltip::new(
+                            "Career plate appearances meet the season-relative qualification threshold (3.1 PA per team game, summed across the schedules the player's teams actually played).",
+                        )
+                        .build(window, cx)
+                    })
+                    .child(widgets::note("Qualified for career rate leaderboards ·", cx))
+                    .child(self.glossary_link("career-glossary"))
+            });
             col = col.child(
-                widgets::section("Career Batting", cx).child(div().p_3().child(widgets::stat_row(
-                    vec![
-                        ("G", format::int(b.games)),
-                        ("AVG", format::rate(b.batting_average)),
-                        ("H", format::int(b.hits)),
-                        ("HR", format::int(b.home_runs)),
-                        ("RBI", format::int(b.rbi)),
-                        ("OPS", format::rate(b.ops)),
-                    ],
-                    cx,
-                ))),
+                widgets::section("Career Batting", cx).child(
+                    v_flex()
+                        .p_3()
+                        .gap_2()
+                        .child(widgets::stat_row(boxes, cx))
+                        .when(p.career_ops_index.is_some(), |this| {
+                            this.child(widgets::note(
+                                "OPS vs Lg: OPS relative to league (100 = average). League-relative, not park-adjusted — see the glossary.",
+                                cx,
+                            ))
+                        })
+                        .children(qualified),
+                ),
             );
         }
         if let Some(pi) = p
@@ -436,8 +518,186 @@ impl PlayerPage {
                 format::rate(s.batting_average)
             }),
         ];
-        widgets::section("Batting Season by Season", cx)
-            .child(grid("batting-seasons", columns, &rows, cx))
+        v_flex()
+            .gap_4()
+            .child(widgets::section("Batting Season by Season", cx).child(grid(
+                "batting-seasons",
+                columns,
+                &rows,
+                cx,
+            )))
+            .children(self.render_advanced_batting(cx))
+            .into_any_element()
+    }
+
+    /// The "About these stats" link in an advanced table's heading.
+    fn glossary_link(&self, id: &str) -> AnyElement {
+        Button::new(SharedString::from(id.to_string()))
+            .link()
+            .xsmall()
+            .label("About these stats")
+            .on_click(self.nav.to(Route::Reference(ReferencePage::Glossary)))
+            .into_any_element()
+    }
+
+    fn render_advanced_batting(&self, cx: &App) -> Option<AnyElement> {
+        let rows: Vec<AdvancedBatting> = self
+            .advanced_batting
+            .ready()?
+            .iter()
+            .filter(|r| r.plate_appearances.unwrap_or(0) > 0)
+            .cloned()
+            .collect();
+        if rows.is_empty() {
+            return None;
+        }
+        let one_decimal = |v: Option<f64>| match v {
+            Some(v) if v.is_finite() => format!("{v:.1}"),
+            _ => DASH.into(),
+        };
+        let columns = vec![
+            Col::text("Year", 64., |r: &AdvancedBatting| r.year.to_string()),
+            Col::text("Lg", 48., |r: &AdvancedBatting| {
+                format::text(r.lg_id.as_deref())
+            }),
+            Col::num("PA", 56., |r: &AdvancedBatting| {
+                format::int(r.plate_appearances)
+            }),
+            Col::num("ISO", 56., |r: &AdvancedBatting| format::rate(r.iso))
+                .tooltip("Isolated power: SLG minus AVG"),
+            Col::num("BABIP", 64., |r: &AdvancedBatting| format::rate(r.babip))
+                .tooltip("Batting average on balls in play"),
+            Col::num("BB%", 56., move |r: &AdvancedBatting| one_decimal(r.bb_pct))
+                .tooltip("Walks per plate appearance"),
+            Col::num("K%", 56., move |r: &AdvancedBatting| one_decimal(r.k_pct))
+                .tooltip("Strikeouts per plate appearance"),
+            Col::num("OPS vs Lg", 84., |r: &AdvancedBatting| {
+                format::int(r.ops_index)
+            })
+            .tooltip("OPS relative to league (100 = average). Not park-adjusted."),
+            Col::num("HR/162", 64., move |r: &AdvancedBatting| {
+                one_decimal(r.hr_per162)
+            })
+            .tooltip("Home runs per 162 team games — normalizes short schedules"),
+            Col::text("Qual", 48., |r: &AdvancedBatting| {
+                if r.qualified { "✓" } else { "" }.to_string()
+            })
+            .tooltip("Season-relative qualification: 3.1 PA per team game"),
+        ];
+        Some(
+            widgets::section_with(
+                "Advanced Batting",
+                self.glossary_link("bat-adv-glossary"),
+                cx,
+            )
+            .child(grid("batting-advanced", columns, &rows, cx))
+            .into_any_element(),
+        )
+    }
+
+    fn render_advanced_pitching(&self, cx: &App) -> Option<AnyElement> {
+        // The API keeps seasons without innings; the web hides them.
+        let rows: Vec<AdvancedPitching> = self
+            .advanced_pitching
+            .ready()?
+            .iter()
+            .filter(|r| r.innings_pitched.unwrap_or(0.) > 0.)
+            .cloned()
+            .collect();
+        if rows.is_empty() {
+            return None;
+        }
+        let columns = vec![
+            Col::text("Year", 64., |r: &AdvancedPitching| r.year.to_string()),
+            Col::text("Lg", 48., |r: &AdvancedPitching| {
+                format::text(r.lg_id.as_deref())
+            }),
+            Col::num("IP", 72., |r: &AdvancedPitching| match r.innings_pitched {
+                Some(v) => format!("{v:.1}"),
+                None => DASH.into(),
+            }),
+            Col::num("K/9", 64., |r: &AdvancedPitching| format::decimal2(r.k9))
+                .tooltip("Strikeouts per nine innings"),
+            Col::num("BB/9", 64., |r: &AdvancedPitching| format::decimal2(r.bb9))
+                .tooltip("Walks per nine innings"),
+            Col::num("WHIP", 72., |r: &AdvancedPitching| match r.whip {
+                Some(v) if v.is_finite() => format!("{v:.3}"),
+                _ => DASH.into(),
+            })
+            .tooltip("Walks plus hits per inning pitched"),
+            Col::text("Qual", 48., |r: &AdvancedPitching| {
+                if r.qualified { "✓" } else { "" }.to_string()
+            })
+            .tooltip("Season-relative qualification: one inning per team game"),
+        ];
+        Some(
+            widgets::section_with(
+                "Advanced Pitching",
+                self.glossary_link("pit-adv-glossary"),
+                cx,
+            )
+            .child(grid("pitching-advanced", columns, &rows, cx))
+            .into_any_element(),
+        )
+    }
+
+    fn render_managing(&self, cx: &App) -> AnyElement {
+        let rows = self.managing.ready().cloned().unwrap_or_default();
+        let wins: i64 = rows.iter().filter_map(|r| r.wins).sum();
+        let losses: i64 = rows.iter().filter_map(|r| r.losses).sum();
+        let pct = if wins + losses > 0 {
+            format::rate(Some(wins as f64 / (wins + losses) as f64))
+        } else {
+            DASH.into()
+        };
+        v_flex()
+            .gap_3()
+            .child(
+                h_flex()
+                    .w_full()
+                    .gap_3()
+                    .items_center()
+                    .justify_between()
+                    .child(
+                        h_flex()
+                            .gap_1()
+                            .text_sm()
+                            .child(
+                                div()
+                                    .text_color(cx.theme().muted_foreground)
+                                    .child("Managerial record:"),
+                            )
+                            .child(
+                                div()
+                                    .font_bold()
+                                    .text_color(cx.theme().primary)
+                                    .child(format::record(Some(wins), Some(losses))),
+                            )
+                            .child(
+                                div()
+                                    .text_color(cx.theme().muted_foreground)
+                                    .child(format!("({pct})")),
+                            ),
+                    )
+                    .child(
+                        Button::new("full-managerial-record")
+                            .small()
+                            .outline()
+                            .label("Full Managerial Record")
+                            .on_click(self.nav.to(Route::Manager {
+                                id: self.id.clone(),
+                            })),
+                    ),
+            )
+            .child(
+                widgets::section("Managing", cx).child(crate::pages::manager::seasons_grid(
+                    "player-managing",
+                    &rows,
+                    false,
+                    &self.nav,
+                    cx,
+                )),
+            )
             .into_any_element()
     }
 
@@ -467,37 +727,17 @@ impl PlayerPage {
             Col::num("SO", 56., |s: &PitchingSeason| format::int(s.strikeouts)),
             Col::num("BB", 56., |s: &PitchingSeason| format::int(s.walks)),
         ];
-        let advanced = vec![
-            Col::text("Year", 64., |s: &PitchingSeason| s.year.to_string()),
-            Col::text("Lg", 56., |s: &PitchingSeason| {
-                format::text(s.lg_id.as_deref())
-            }),
-            Col::num("IP", 72., |s: &PitchingSeason| {
-                format::innings(s.innings_pitched)
-            }),
-            Col::num("K/9", 64., |s: &PitchingSeason| {
-                format::decimal2(per_nine(s.strikeouts, s.innings_pitched))
-            }),
-            Col::num("BB/9", 64., |s: &PitchingSeason| {
-                format::decimal2(per_nine(s.walks, s.innings_pitched))
-            }),
-            Col::num("WHIP", 72., |s: &PitchingSeason| {
-                whip(s.walks, s.hits, s.innings_pitched)
-                    .map(|v| format!("{v:.3}"))
-                    .unwrap_or_else(|| DASH.into())
-            }),
-        ];
         v_flex()
             .gap_4()
-            .child(widgets::section("Pitching Season by Season", cx).child(grid("pitching-seasons", seasons, &rows, cx)))
             .child(
-                widgets::section("Advanced Pitching", cx)
-                    .child(grid("pitching-advanced", advanced, &rows, cx))
-                    .child(div().px_4().py_2().child(widgets::note(
-                        "K/9 and BB/9: strikeouts and walks per nine innings. WHIP: walks plus hits per inning pitched.",
-                        cx,
-                    ))),
+                widgets::section("Pitching Season by Season", cx).child(grid(
+                    "pitching-seasons",
+                    seasons,
+                    &rows,
+                    cx,
+                )),
             )
+            .children(self.render_advanced_pitching(cx))
             .into_any_element()
     }
 
@@ -668,6 +908,7 @@ impl PlayerPage {
             self.fielding.is_loading(),
             self.post_batting.is_loading(),
             self.post_pitching.is_loading(),
+            self.managing.is_loading(),
         ]
         .contains(&true);
         let tabs = self.tabs();
@@ -689,6 +930,7 @@ impl PlayerPage {
             StatTab::Pitching => self.render_pitching(cx),
             StatTab::Fielding => self.render_fielding(cx),
             StatTab::Postseason => self.render_postseason(cx),
+            StatTab::Managing => self.render_managing(cx),
         };
         v_flex()
             .gap_3()
@@ -724,7 +966,11 @@ impl Page for PlayerPage {
         self.awards = Loadable::Loading;
         self.post_batting = Loadable::Loading;
         self.post_pitching = Loadable::Loading;
-        // Seven independent requests, issued in parallel.
+        self.advanced_batting = Loadable::Loading;
+        self.advanced_pitching = Loadable::Loading;
+        self.managing = Loadable::Loading;
+        self.all_star = Loadable::Loading;
+        // Independent requests, issued in parallel.
         macro_rules! load {
             ($field:ident, $call:ident) => {{
                 let id = id.clone();
@@ -743,6 +989,10 @@ impl Page for PlayerPage {
             load!(awards, player_awards),
             load!(post_batting, player_postseason_batting),
             load!(post_pitching, player_postseason_pitching),
+            load!(advanced_batting, player_batting_advanced),
+            load!(advanced_pitching, player_pitching_advanced),
+            load!(managing, player_managing),
+            load!(all_star, player_all_star),
         ];
         cx.notify();
     }
@@ -844,22 +1094,14 @@ impl Render for PlayerPage {
 
 #[cfg(test)]
 mod tests {
-    use super::{fielding_pct, per_nine, true_innings, whip};
+    use super::fielding_pct;
 
     #[test]
-    fn innings_notation_converts_thirds() {
-        assert_eq!(
-            true_innings(Some(200.2)).map(|v| (v * 3.).round()),
-            Some(602.)
-        );
-        assert_eq!(per_nine(Some(9), Some(9.0)), Some(9.0));
-        assert_eq!(
-            whip(Some(3), Some(12), Some(9.0)).map(|v| (v * 1000.).round()),
-            Some(1667.)
-        );
+    fn fielding_pct_counts_chances() {
         assert_eq!(
             fielding_pct(Some(39), Some(1), Some(2)).map(|v| (v * 1000.).round()),
             Some(952.)
         );
+        assert_eq!(fielding_pct(Some(0), Some(0), Some(0)), None);
     }
 }

@@ -16,13 +16,13 @@ left out rather than faked.
 | Web page / feature | Desktop | API source |
 | --- | --- | --- |
 | Home (hero counts, HR & Wins leaders, recent HOF, quick links) | ✅ | `/players`, `/teams/franchises`, `/hall-of-fame`, `/leaders/*` |
-| Home "This Day in Baseball" | ❌ no endpoint | — |
+| Home "This Day in Baseball" (local date) | ✅ | `/this-day?date=MM-DD` |
 | Global search (debounced, players + teams) and full Search page | ✅ | `/search` |
-| Players A–Z browser, paged | ✅ | `/players?letter` |
-| Player name/position/era/sort filters | ❌ API has no such params (name search goes through Search) | — |
+| Players A–Z browser, paged, with name/position/era/sort filters | ✅ | `/players?letter&q&pos&era&sort` |
 | Player detail: info, teams, honors, career batting/pitching | ✅ | `/players/{id}`, `/awards` |
 | Player tabs: Batting, Pitching (+ Advanced: K/9, BB/9, WHIP computed), Fielding (+ career by position, FPct computed), Postseason | ✅ | `/players/{id}/*` |
-| Advanced Batting (PA, BABIP, OPS vs Lg), Managing tab, All-Star count | ❌ needs fields the API lacks | — |
+| Advanced Batting (PA, ISO, BABIP, BB%, K%, OPS vs Lg, HR/162) and Advanced Pitching | ✅ | `/players/{id}/batting/advanced`, `/players/{id}/pitching/advanced` |
+| Managing tab, All-Star count and years, career OPS vs Lg, career qualification | ✅ (the "n% of the threshold" line is left out: the API returns only whether a career qualifies) | `/players/{id}`, `/players/{id}/managing`, `/players/{id}/all-star` |
 | Teams & Franchises (league filter, active/historical, name + era filter) | ✅ (name/era filtered locally over the full list) | `/teams/franchises` |
 | Franchise detail + season history | ✅ | `/teams/franchises/{id}` |
 | Team season (badges, stat boxes, park, managers, batters, pitchers) | ✅ | `/teams/seasons/{t}/{lg}/{y}` |
@@ -37,7 +37,10 @@ left out rather than faked.
 | HOF ballot history, player salary history | ❌ not shown by the web app (endpoints exist; the client wraps them) | `/hall-of-fame/{id}/voting`, `/salaries/players/{id}` |
 | Compare two players | ✅ | `/search` + `/players/{id}` |
 | About, Glossary, Surviving Records (static text) | ✅ | bundled Markdown |
-| Managers, All-Star Games, Negro Leagues hub | ❌ no endpoints | — |
+| Managers (by wins or name, name filter) and manager detail | ✅ (manager awards' "View Race" is left out: the voting endpoint has no manager races) | `/managers`, `/managers/{id}` |
+| All-Star Games and each season's rosters | ✅ | `/all-star`, `/all-star/{year}` |
+| Negro Leagues hub, league and season pages | ✅ | `/negro-leagues`, `/negro-leagues/{lg}`, `/negro-leagues/{lg}/{year}` |
+| Player Honors: manager awards mixed into the list | ❌ `/players/{id}/awards` returns player awards only (they appear on the manager page) | — |
 | API / MCP docs, GitHub, Lahman credit | opened in the browser | — |
 | Dark mode toggle | ✅ GPUI Kit theme mode | — |
 

@@ -11,6 +11,7 @@ use gpui_kit::component::{
     button::{Button, ButtonVariants as _},
     h_flex,
     table::{Table, TableBody, TableCell, TableHead, TableHeader, TableRow},
+    tooltip::Tooltip,
 };
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
@@ -146,6 +147,13 @@ pub fn grid_with_row_style<T>(
                 .when(column.active, |this| this.icon(IconName::ChevronDown))
                 .when_some(column.tooltip.clone(), |this, tip| this.tooltip(tip))
                 .on_click(handler)
+                .into_any_element()
+        } else if let Some(tip) = column.tooltip.clone() {
+            div()
+                .id(ElementId::Name(format!("{id}-head-{ix}").into()))
+                .when(column.active, |this| this.font_bold().text_color(primary))
+                .tooltip(move |window, cx| Tooltip::new(tip.clone()).build(window, cx))
+                .child(name)
                 .into_any_element()
         } else {
             div()

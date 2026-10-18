@@ -77,6 +77,15 @@ pub struct PlayerDetail {
     pub teams: Vec<PlayerTeam>,
     #[serde(default)]
     pub is_partial_record: bool,
+    /// Career OPS relative to league (100 = average).
+    pub career_ops_index: Option<i64>,
+    /// Whether career plate appearances meet the qualification threshold.
+    pub career_qualified: Option<bool>,
+    /// Distinct seasons with an All-Star selection.
+    #[serde(default)]
+    pub all_star_selections: i64,
+    #[serde(default)]
+    pub has_managerial_career: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -651,4 +660,337 @@ pub struct AwardVote {
     pub points_max: Option<f64>,
     pub votes_first: Option<String>,
     pub vote_share: Option<f64>,
+}
+
+// MARK: Advanced player stats
+
+/// `/players/{id}/batting/advanced`: one row per season, stints combined.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdvancedBatting {
+    pub year: i32,
+    pub lg_id: Option<String>,
+    pub plate_appearances: Option<i64>,
+    pub iso: Option<f64>,
+    pub babip: Option<f64>,
+    /// Already a percentage (21.7).
+    pub bb_pct: Option<f64>,
+    pub k_pct: Option<f64>,
+    pub ops_index: Option<i64>,
+    pub hr_per162: Option<f64>,
+    #[serde(default)]
+    pub qualified: bool,
+}
+
+/// `/players/{id}/pitching/advanced`: one row per season, stints combined.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdvancedPitching {
+    pub year: i32,
+    pub lg_id: Option<String>,
+    /// Decimal innings (126.3 = 126⅓), not baseball outs notation.
+    pub innings_pitched: Option<f64>,
+    pub k9: Option<f64>,
+    pub bb9: Option<f64>,
+    pub whip: Option<f64>,
+    #[serde(default)]
+    pub qualified: bool,
+}
+
+/// One row of `/players/{id}/all-star`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayerAllStar {
+    pub year: i32,
+}
+
+// MARK: Managers
+
+/// A row of `/managers`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagerSummary {
+    pub player_id: String,
+    pub full_name: String,
+    pub first_year: Option<i32>,
+    pub last_year: Option<i32>,
+    pub seasons: Option<i64>,
+    pub games: Option<i64>,
+    pub wins: Option<i64>,
+    pub losses: Option<i64>,
+    pub win_pct: Option<f64>,
+    #[serde(default)]
+    pub is_hall_of_famer: bool,
+}
+
+/// One team-season a manager ran, from `/managers/{id}` and `/players/{id}/managing`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagerSeason {
+    pub year: i32,
+    pub team_id: String,
+    pub lg_id: Option<String>,
+    pub team_name: Option<String>,
+    pub order: Option<i64>,
+    pub games: Option<i64>,
+    pub wins: Option<i64>,
+    pub losses: Option<i64>,
+    pub win_pct: Option<f64>,
+    pub rank: Option<i64>,
+    #[serde(default)]
+    pub is_player_manager: bool,
+    #[serde(default)]
+    pub won_pennant: bool,
+    #[serde(default)]
+    pub won_world_series: bool,
+}
+
+/// A half of a split season (1892, 1981).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagerSplitHalf {
+    pub year: i32,
+    pub team_id: String,
+    pub lg_id: Option<String>,
+    pub team_name: Option<String>,
+    pub half: Option<i64>,
+    pub games: Option<i64>,
+    pub wins: Option<i64>,
+    pub losses: Option<i64>,
+    pub rank: Option<i64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagerAward {
+    pub award_id: String,
+    pub year: i32,
+    pub lg_id: Option<String>,
+    #[serde(default)]
+    pub has_voting_data: bool,
+}
+
+/// `/managers/{id}`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManagerDetail {
+    pub player_id: String,
+    pub full_name: String,
+    #[serde(default)]
+    pub is_hall_of_famer: bool,
+    #[serde(default)]
+    pub was_player: bool,
+    #[serde(default)]
+    pub was_player_manager: bool,
+    pub first_year: Option<i32>,
+    pub last_year: Option<i32>,
+    pub seasons: Option<i64>,
+    pub wins: Option<i64>,
+    pub losses: Option<i64>,
+    pub win_pct: Option<f64>,
+    pub pennants: Option<i64>,
+    pub world_series_titles: Option<i64>,
+    #[serde(default)]
+    pub season_records: Vec<ManagerSeason>,
+    #[serde(default)]
+    pub split_season_halves: Vec<ManagerSplitHalf>,
+    #[serde(default)]
+    pub awards: Vec<ManagerAward>,
+}
+
+// MARK: All-Star Games
+
+/// A row of `/all-star`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AllStarSeason {
+    pub year: i32,
+    pub game_count: Option<i64>,
+    pub selections: Option<i64>,
+    #[serde(default)]
+    pub has_east_west_game: bool,
+}
+
+/// `/all-star/{year}`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AllStarYear {
+    pub year: i32,
+    pub previous_year: Option<i32>,
+    pub next_year: Option<i32>,
+    #[serde(default)]
+    pub games: Vec<AllStarGame>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AllStarGame {
+    pub title: String,
+    /// `AllStar`, `EastWest`, `NorthSouth` or `Other`.
+    pub game_type: String,
+    pub game_num: Option<i64>,
+    /// ISO `YYYY-MM-DD`; null for the Negro League showcases.
+    pub game_date: Option<String>,
+    #[serde(default)]
+    pub rosters: Vec<AllStarRoster>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AllStarRoster {
+    pub lg_id: Option<String>,
+    pub squad_name: String,
+    #[serde(default)]
+    pub players: Vec<AllStarPlayer>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AllStarPlayer {
+    pub player_id: String,
+    pub full_name: String,
+    pub team_id: Option<String>,
+    pub team_name: Option<String>,
+    /// The club's own league (e.g. `NN2` on a Negro League squad).
+    pub team_lg_id: Option<String>,
+    #[serde(default)]
+    pub is_starter: bool,
+    pub starting_position: Option<String>,
+    #[serde(default)]
+    pub played: bool,
+    #[serde(default)]
+    pub is_hall_of_famer: bool,
+}
+
+// MARK: Negro Leagues
+
+/// A row of `/negro-leagues`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NegroLeague {
+    pub lg_id: String,
+    pub name: String,
+    pub first_year: Option<i32>,
+    pub last_year: Option<i32>,
+    pub summary: Option<String>,
+    pub team_seasons: Option<i64>,
+    pub clubs: Option<i64>,
+}
+
+/// `/negro-leagues/{lgId}`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NegroLeagueDetail {
+    pub lg_id: String,
+    pub name: String,
+    pub first_year: Option<i32>,
+    pub last_year: Option<i32>,
+    pub summary: Option<String>,
+    #[serde(default)]
+    pub seasons: Vec<NegroLeagueSeasonSummary>,
+    #[serde(default)]
+    pub clubs: Vec<NegroLeagueClub>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NegroLeagueSeasonSummary {
+    pub year: i32,
+    pub team_count: Option<i64>,
+    pub champion_team_id: Option<String>,
+    pub champion_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NegroLeagueClub {
+    pub team_id: String,
+    pub name: Option<String>,
+    pub first_year: Option<i32>,
+    pub last_year: Option<i32>,
+    pub seasons: Option<i64>,
+    pub wins: Option<i64>,
+    pub losses: Option<i64>,
+    pub win_pct: Option<f64>,
+    pub pennants: Option<i64>,
+}
+
+/// `/negro-leagues/{lgId}/{year}`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NegroLeagueSeason {
+    pub lg_id: String,
+    pub league_name: String,
+    pub year: i32,
+    pub previous_year: Option<i32>,
+    pub next_year: Option<i32>,
+    #[serde(default)]
+    pub standings: Vec<NegroLeagueStanding>,
+    #[serde(default)]
+    pub leaders: NegroLeagueLeaders,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NegroLeagueStanding {
+    pub team_id: String,
+    pub name: Option<String>,
+    pub rank: Option<i64>,
+    pub wins: Option<i64>,
+    pub losses: Option<i64>,
+    pub games: Option<i64>,
+    pub win_pct: Option<f64>,
+    pub games_behind: Option<f64>,
+    #[serde(default)]
+    pub won_pennant: bool,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NegroLeagueLeaders {
+    #[serde(default)]
+    pub batting_average: Vec<NegroLeagueLeader>,
+    #[serde(default)]
+    pub home_runs: Vec<NegroLeagueLeader>,
+    #[serde(default)]
+    pub era: Vec<NegroLeagueLeader>,
+    #[serde(default)]
+    pub wins: Vec<NegroLeagueLeader>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NegroLeagueLeader {
+    pub rank: Option<i64>,
+    pub player_id: String,
+    pub player_name: String,
+    /// A raw number; formatted per category.
+    pub value: Option<f64>,
+    #[serde(default)]
+    pub is_hall_of_famer: bool,
+}
+
+// MARK: This Day in Baseball
+
+/// `/this-day`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThisDay {
+    pub label: String,
+    #[serde(default)]
+    pub birthdays: Vec<ThisDayEntry>,
+    #[serde(default)]
+    pub debuts: Vec<ThisDayEntry>,
+    #[serde(default)]
+    pub final_games: Vec<ThisDayEntry>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThisDayEntry {
+    pub player_id: String,
+    pub full_name: String,
+    pub year: Option<i32>,
+    #[serde(default)]
+    pub is_hall_of_famer: bool,
 }

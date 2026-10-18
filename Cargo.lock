@@ -562,6 +562,7 @@ name = "baseball-history-desktop"
 version = "0.1.1"
 dependencies = [
  "anyhow",
+ "chrono",
  "gpui-kit",
  "gpui-pre",
  "gpui-pre-platform",
