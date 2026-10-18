@@ -2,12 +2,16 @@
 //! its loaded data and its in-flight requests, so returning to it through
 //! history restores it exactly as it was left.
 
+mod all_star;
 mod awards;
 mod compare;
 mod franchise;
 mod hall_of_fame;
 mod home;
 mod leaders;
+pub(crate) mod manager;
+mod managers;
+mod negro_leagues;
 mod park;
 mod parks;
 mod player;
@@ -77,6 +81,13 @@ page_views! {
     Salaries => salaries::SalariesPage,
     Search => search::SearchPage,
     Compare => compare::ComparePage,
+    Managers => managers::ManagersPage,
+    Manager => manager::ManagerPage,
+    AllStar => all_star::AllStarPage,
+    AllStarYear => all_star::AllStarYearPage,
+    NegroLeagues => negro_leagues::NegroLeaguesPage,
+    NegroLeague => negro_leagues::NegroLeaguePage,
+    NegroLeagueSeason => negro_leagues::NegroLeagueSeasonPage,
     Reference => reference::ReferencePageView,
 }
 
@@ -127,6 +138,27 @@ pub fn build(route: &Route, nav: &Navigator, window: &mut Window, cx: &mut App) 
         }
         Route::Compare { first, second } => PageView::Compare(
             cx.new(|cx| compare::ComparePage::new(first, second, nav, window, cx)),
+        ),
+        Route::Managers => {
+            PageView::Managers(cx.new(|cx| managers::ManagersPage::new(nav, window, cx)))
+        }
+        Route::Manager { id } => {
+            PageView::Manager(cx.new(|cx| manager::ManagerPage::new(id, nav, window, cx)))
+        }
+        Route::AllStar => {
+            PageView::AllStar(cx.new(|cx| all_star::AllStarPage::new(nav, window, cx)))
+        }
+        Route::AllStarYear { year } => PageView::AllStarYear(
+            cx.new(|cx| all_star::AllStarYearPage::new(year, nav, window, cx)),
+        ),
+        Route::NegroLeagues => PageView::NegroLeagues(
+            cx.new(|cx| negro_leagues::NegroLeaguesPage::new(nav, window, cx)),
+        ),
+        Route::NegroLeague { lg_id } => PageView::NegroLeague(
+            cx.new(|cx| negro_leagues::NegroLeaguePage::new(lg_id, nav, window, cx)),
+        ),
+        Route::NegroLeagueSeason { lg_id, year } => PageView::NegroLeagueSeason(
+            cx.new(|cx| negro_leagues::NegroLeagueSeasonPage::new(lg_id, year, nav, window, cx)),
         ),
         Route::Reference(page) => PageView::Reference(
             cx.new(|cx| reference::ReferencePageView::new(page, nav, window, cx)),

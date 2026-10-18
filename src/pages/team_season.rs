@@ -265,14 +265,32 @@ impl Render for TeamSeasonPage {
                                     m.is_hall_of_famer,
                                     &self.nav,
                                 ))
-                                .child(widgets::note(
-                                    format!(
-                                        "{} ({} G)",
-                                        format::record(m.wins, m.losses),
-                                        format::int(m.games)
-                                    ),
-                                    cx,
-                                ))
+                                .child(
+                                    h_flex()
+                                        .gap_2()
+                                        .items_center()
+                                        .child(widgets::note(
+                                            format!(
+                                                "{} ({} G)",
+                                                format::record(m.wins, m.losses),
+                                                format::int(m.games)
+                                            ),
+                                            cx,
+                                        ))
+                                        .child(
+                                            Button::new(SharedString::from(format!(
+                                                "mgr-career-{}",
+                                                m.player_id
+                                            )))
+                                            .link()
+                                            .xsmall()
+                                            .label("Career")
+                                            .tooltip("Full managerial record")
+                                            .on_click(self.nav.to(Route::Manager {
+                                                id: m.player_id.clone(),
+                                            })),
+                                        ),
+                                )
                         })),
                 );
 

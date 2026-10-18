@@ -10,11 +10,13 @@ gpui_kit::assets::icon_assets!(
     [
         Award,
         BookA,
+        BookOpen,
         ChartBar,
         ChartColumn,
         ChevronDown,
         ChevronLeft,
         ChevronRight,
+        ClipboardList,
         Columns2,
         DollarSign,
         ExternalLink,

@@ -1,4 +1,5 @@
-//! Home: hero with dataset counts, career leaders, recent inductees and quick links.
+//! Home: hero with dataset counts, This Day in Baseball, career leaders,
+//! recent inductees and quick links.
 
 use gpui_kit::assets::IconName;
 use gpui_kit::component::{
@@ -7,8 +8,8 @@ use gpui_kit::component::{
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
-use crate::api::LeaderRequest;
-use crate::api::models::{BattingLeader, HallOfFamer, PitchingLeader};
+use crate::api::models::{BattingLeader, HallOfFamer, PitchingLeader, ThisDay, ThisDayEntry};
+use crate::api::{LeaderRequest, PlayerQuery};
 use crate::catalog;
 use crate::format;
 use crate::loader::{self, Loadable};
@@ -31,6 +32,7 @@ pub struct HomePage {
     hr_leaders: Loadable<Vec<BattingLeader>>,
     win_leaders: Loadable<Vec<PitchingLeader>>,
     inductees: Loadable<Vec<HallOfFamer>>,
+    this_day: Loadable<ThisDay>,
     _tasks: Vec<Task<()>>,
 }
 
@@ -57,6 +59,7 @@ impl HomePage {
             hr_leaders: Loadable::Idle,
             win_leaders: Loadable::Idle,
             inductees: Loadable::Idle,
+            this_day: Loadable::Idle,
             _tasks: Vec::new(),
         };
         page.reload(window, cx);
@@ -187,6 +190,65 @@ impl HomePage {
             cx,
         )
         .into_any_element()
+    }
+
+    /// Birthdays, debuts and final games on today's date. Hidden when the
+    /// date has none, or when the request fails (it is supplementary).
+    fn render_this_day(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+        let day = self.this_day.ready()?;
+        if day.birthdays.is_empty() && day.debuts.is_empty() && day.final_games.is_empty() {
+            return None;
+        }
+        let column = |key: &str, heading: &str, entries: &[ThisDayEntry], born: bool| {
+            v_flex()
+                .flex_1()
+                .min_w(px(220.))
+                .gap_1()
+                .child(
+                    div()
+                        .text_xs()
+                        .font_semibold()
+                        .text_color(cx.theme().muted_foreground)
+                        .child(heading.to_uppercase()),
+                )
+                .when(entries.is_empty(), |this| {
+                    this.child(widgets::note("None on this date.", cx))
+                })
+                .children(entries.iter().map(|e| {
+                    h_flex()
+                        .gap_1()
+                        .items_center()
+                        .child(widgets::player_link(
+                            SharedString::from(format!("today-{key}-{}", e.player_id)),
+                            &e.player_id,
+                            e.full_name.clone(),
+                            e.is_hall_of_famer,
+                            &self.nav,
+                        ))
+                        .when_some(e.year, |this, year| {
+                            let label = if born {
+                                format!("b. {year}")
+                            } else {
+                                year.to_string()
+                            };
+                            this.child(widgets::note(label, cx))
+                        })
+                }))
+        };
+        Some(
+            widgets::section(format!("This Day in Baseball — {}", day.label), cx)
+                .child(
+                    h_flex()
+                        .p_3()
+                        .gap_5()
+                        .flex_wrap()
+                        .items_start()
+                        .child(column("born", "Birthdays", &day.birthdays, true))
+                        .child(column("debut", "Debuts", &day.debuts, false))
+                        .child(column("final", "Final Games", &day.final_games, false)),
+                )
+                .into_any_element(),
+        )
     }
 
     fn render_inductees(&self, cx: &mut Context<Self>) -> AnyElement {
@@ -342,6 +404,7 @@ impl Page for HomePage {
         self.hr_leaders = Loadable::Loading;
         self.win_leaders = Loadable::Loading;
         self.inductees = Loadable::Loading;
+        self.this_day = Loadable::Loading;
         self._tasks = vec![
             loader::fetch(
                 cx,
@@ -350,7 +413,7 @@ impl Page for HomePage {
                     // total is the sum of each letter's count.
                     let mut players = 0;
                     for letter in 'A'..='Z' {
-                        players += api.players(Some(letter), 1, 1)?.total_count;
+                        players += api.players(&PlayerQuery::letter(letter, 1, 1))?.total_count;
                     }
                     let franchises = api.franchises(None, false)?.len();
                     let hall_of_famers = api.hall_of_fame(None, None, 1, 1)?.total_count;
@@ -376,6 +439,15 @@ impl Page for HomePage {
                 cx,
                 |api| api.hall_of_fame(None, None, 1, 6).map(|p| p.data),
                 |this: &mut Self, result, _| this.inductees = Loadable::from_result(result),
+            ),
+            loader::fetch(
+                cx,
+                |api| {
+                    use chrono::Datelike as _;
+                    let today = chrono::Local::now().date_naive();
+                    api.this_day(today.month(), today.day(), 5)
+                },
+                |this: &mut Self, result, _| this.this_day = Loadable::from_result(result),
             ),
         ];
         cx.notify();
@@ -421,6 +493,7 @@ impl Render for HomePage {
                 widgets::page_column()
                     .child(self.render_hero(cx))
                     .child(self.render_counts(cx))
+                    .children(self.render_this_day(cx))
                     .child(
                         h_flex()
                             .w_full()
@@ -431,8 +504,7 @@ impl Render for HomePage {
                             .child(wins),
                     )
                     .child(self.render_inductees(cx))
-                    .child(self.render_quick_links(cx))
-                    .when(false, |this| this),
+                    .child(self.render_quick_links(cx)),
             )
             .into_any_element()
     }

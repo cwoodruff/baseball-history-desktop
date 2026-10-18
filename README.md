@@ -18,12 +18,13 @@ The builds aren't code-signed. On macOS, right-click the app and choose **Open**
 
 ## Features
 
-- **Home:** dataset counts, career home-run and wins leaders, and recent Hall of Fame inductees.
-- **Players:** an A–Z browser, plus a player page with bio, teams, honors, career totals, and Batting, Pitching (with K/9, BB/9, WHIP), Fielding and Postseason tabs.
+- **Home:** dataset counts, This Day in Baseball, career home-run and wins leaders, and recent Hall of Fame inductees.
+- **Players:** an A–Z browser with name, position, era and sort filters, plus a player page with bio, teams, honors and All-Star selections, career totals (with OPS vs league), and Batting and Pitching (each with advanced stats), Fielding, Postseason and Managing tabs.
 - **Teams:** franchises filtered by league, name and era, each franchise's season history, and team-season pages with roster leaders.
+- **Negro Leagues:** the seven recognized leagues, each league's seasons and clubs, and each season's standings and leaders.
 - **Ballparks:** parks filtered by state, name and city, with an attendance chart and tenant history.
 - **Batting and Pitching Leaders:** filter by stat, years, league, minimum AB/IP and single season; click a column header to rank by it.
-- **Hall of Fame, Awards & Voting** (including voting races), **Postseason** results and the **Salary Explorer** (including team payrolls).
+- **Hall of Fame**, **Managers**, **Awards & Voting** (including voting races), **All-Star Games** rosters, **Postseason** results and the **Salary Explorer** (including team payrolls).
 - **Global search** (debounced, live dropdown), a full **Search** page and **Compare Players**.
 - **About, Glossary** and **Surviving Records** reference pages.
 - Light and dark themes, back/forward history, and keyboard shortcuts.

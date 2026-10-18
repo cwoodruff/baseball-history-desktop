@@ -42,6 +42,22 @@ pub enum Route {
         first: Option<String>,
         second: Option<String>,
     },
+    Managers,
+    Manager {
+        id: String,
+    },
+    AllStar,
+    AllStarYear {
+        year: i32,
+    },
+    NegroLeagues,
+    NegroLeague {
+        lg_id: String,
+    },
+    NegroLeagueSeason {
+        lg_id: String,
+        year: i32,
+    },
     Reference(ReferencePage),
 }
 
@@ -59,10 +75,13 @@ pub enum Section {
     Players,
     Teams,
     Parks,
+    NegroLeagues,
     BattingLeaders,
     PitchingLeaders,
     HallOfFame,
+    Managers,
     Awards,
+    AllStar,
     Postseason,
     Salaries,
     Compare,
@@ -79,6 +98,9 @@ impl Section {
             Section::Players => "Players",
             Section::Teams => "Teams",
             Section::Parks => "Ballparks",
+            Section::NegroLeagues => "Negro Leagues",
+            Section::Managers => "Managers",
+            Section::AllStar => "All-Star Games",
             Section::BattingLeaders => "Batting Leaders",
             Section::PitchingLeaders => "Pitching Leaders",
             Section::HallOfFame => "Hall of Fame",
@@ -99,6 +121,9 @@ impl Section {
             Section::Players => IconName::Users,
             Section::Teams => IconName::Flag,
             Section::Parks => IconName::MapPin,
+            Section::NegroLeagues => IconName::BookOpen,
+            Section::Managers => IconName::ClipboardList,
+            Section::AllStar => IconName::Star,
             Section::BattingLeaders => IconName::ChartColumn,
             Section::PitchingLeaders => IconName::ChartBar,
             Section::HallOfFame => IconName::Landmark,
@@ -120,6 +145,9 @@ impl Section {
             Section::Players => Route::Players { letter: 'A' },
             Section::Teams => Route::Teams,
             Section::Parks => Route::Parks,
+            Section::NegroLeagues => Route::NegroLeagues,
+            Section::Managers => Route::Managers,
+            Section::AllStar => Route::AllStar,
             Section::BattingLeaders => Route::BattingLeaders,
             Section::PitchingLeaders => Route::PitchingLeaders,
             Section::HallOfFame => Route::HallOfFame {
@@ -152,6 +180,7 @@ pub const SIDEBAR: &[(&str, &[Section])] = &[
             Section::Players,
             Section::Teams,
             Section::Parks,
+            Section::NegroLeagues,
         ],
     ),
     (
@@ -160,7 +189,9 @@ pub const SIDEBAR: &[(&str, &[Section])] = &[
             Section::BattingLeaders,
             Section::PitchingLeaders,
             Section::HallOfFame,
+            Section::Managers,
             Section::Awards,
+            Section::AllStar,
             Section::Postseason,
             Section::Salaries,
         ],
@@ -180,6 +211,11 @@ impl Route {
             Route::Players { .. } | Route::Player { .. } => Section::Players,
             Route::Teams | Route::Franchise { .. } | Route::TeamSeason { .. } => Section::Teams,
             Route::Parks | Route::Park { .. } => Section::Parks,
+            Route::NegroLeagues | Route::NegroLeague { .. } | Route::NegroLeagueSeason { .. } => {
+                Section::NegroLeagues
+            }
+            Route::Managers | Route::Manager { .. } => Section::Managers,
+            Route::AllStar | Route::AllStarYear { .. } => Section::AllStar,
             Route::BattingLeaders => Section::BattingLeaders,
             Route::PitchingLeaders => Section::PitchingLeaders,
             Route::HallOfFame { .. } => Section::HallOfFame,
