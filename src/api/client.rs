@@ -2,7 +2,7 @@
 //!
 //! Calls are synchronous by design: views run them on GPUI's background
 //! executor (see [`crate::loader`]) so the UI thread never waits on the
-//! network.
+//! network. Responses are cached (see [`super::cache`]).
 
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
@@ -10,6 +10,7 @@ use std::time::Duration;
 use anyhow::{Context as _, Result, anyhow};
 use serde::de::DeserializeOwned;
 
+use super::cache::{self, Cache};
 use super::models::*;
 
 pub const DEFAULT_BASE_URL: &str = "https://baseballhistoryproject.com";
@@ -19,6 +20,7 @@ pub const DEFAULT_BASE_URL: &str = "https://baseballhistoryproject.com";
 pub struct ApiClient {
     agent: ureq::Agent,
     base_url: Arc<str>,
+    cache: Option<Arc<Cache>>,
 }
 
 /// Errors a view distinguishes from ordinary failures.
@@ -92,24 +94,72 @@ impl ApiClient {
         Self {
             agent: config.into(),
             base_url: base_url.trim_end_matches('/').into(),
+            cache: None,
+        }
+    }
+
+    pub fn with_cache(mut self, cache: Cache) -> Self {
+        self.cache = Some(Arc::new(cache));
+        self
+    }
+
+    /// Makes the next request for anything already cached ask the service.
+    pub fn invalidate_cache(&self) {
+        if let Some(cache) = &self.cache {
+            cache.invalidate();
         }
     }
 
     /// The process-wide client, honoring `BASEBALL_HISTORY_API_URL` when set.
+    /// Responses are cached on disk unless `BASEBALL_HISTORY_NO_CACHE` is set.
     pub fn global() -> &'static ApiClient {
         static CLIENT: OnceLock<ApiClient> = OnceLock::new();
         CLIENT.get_or_init(|| {
             let base = std::env::var("BASEBALL_HISTORY_API_URL")
                 .unwrap_or_else(|_| DEFAULT_BASE_URL.to_string());
-            ApiClient::new(base)
+            let dir = std::env::var_os("BASEBALL_HISTORY_NO_CACHE")
+                .is_none()
+                .then(cache::default_dir)
+                .flatten();
+            ApiClient::new(base).with_cache(Cache::new(dir))
         })
     }
 
+    /// Serves a fresh cached response, else asks the service, falling back to
+    /// a stale cached response when the service cannot answer.
     fn get<T: DeserializeOwned>(&self, path: &str, query: Query) -> Result<T> {
         let url = format!("{}/api{}{}", self.base_url, path, query.encode());
+        let parse = |body: &str| {
+            serde_json::from_str::<T>(body)
+                .with_context(|| format!("Unexpected response from {path}"))
+        };
+        let cached = self.cache.as_ref().and_then(|cache| cache.get(&url));
+        if let Some(hit) = &cached
+            && hit.fresh
+            && let Ok(value) = parse(&hit.body)
+        {
+            return Ok(value);
+        }
+        match self.fetch(&url) {
+            Ok(body) => {
+                let value = parse(&body)?;
+                if let Some(cache) = &self.cache {
+                    cache.put(&url, body.into());
+                }
+                Ok(value)
+            }
+            Err(error) if is_not_found(&error) => Err(error),
+            Err(error) => match cached.and_then(|hit| parse(&hit.body).ok()) {
+                Some(value) => Ok(value),
+                None => Err(error),
+            },
+        }
+    }
+
+    fn fetch(&self, url: &str) -> Result<String> {
         let mut response = self
             .agent
-            .get(&url)
+            .get(url)
             .header("Accept", "application/json")
             .call()
             .with_context(|| "Could not reach the Baseball History service.".to_string())?;
@@ -122,8 +172,10 @@ impl ApiClient {
         }
         response
             .body_mut()
-            .read_json::<T>()
-            .with_context(|| format!("Unexpected response from {path}"))
+            .with_config()
+            .limit(64 * 1024 * 1024)
+            .read_to_string()
+            .with_context(|| format!("Could not read the response from {url}"))
     }
 
     // MARK: Players

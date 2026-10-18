@@ -64,6 +64,8 @@ None of the builds are code-signed. On macOS, right-click the app and choose **O
 
 To point the app at another deployment of the API, set `BASEBALL_HISTORY_API_URL` (default `https://baseballhistoryproject.com`).
 
+API responses are cached on disk for 24 hours, and an older cached copy is shown when the service can't be reached. Reload (⌘R / Ctrl+R / F5) fetches the current page fresh. The cache lives in `~/Library/Caches/com.baseballhistoryproject.desktop/api` on macOS, `%LOCALAPPDATA%\com.baseballhistoryproject.desktop\api` on Windows and `~/.cache/com.baseballhistoryproject.desktop/api` on Linux; set `BASEBALL_HISTORY_NO_CACHE=1` to keep it in memory only.
+
 ### Keyboard shortcuts
 
 `Ctrl` on Windows and Linux, `⌘` on macOS:

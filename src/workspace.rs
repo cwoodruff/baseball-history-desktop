@@ -144,6 +144,7 @@ impl Workspace {
     }
 
     fn reload(&mut self, _: &Reload, window: &mut Window, cx: &mut Context<Self>) {
+        crate::api::ApiClient::global().invalidate_cache();
         self.current().page.reload(window, cx);
     }
 
