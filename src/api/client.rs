@@ -4,8 +4,9 @@
 //! executor (see [`crate::loader`]) so the UI thread never waits on the
 //! network. Responses are cached (see [`super::cache`]).
 
+use std::cell::Cell;
 use std::sync::{Arc, OnceLock};
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use anyhow::{Context as _, Result, anyhow};
 use serde::de::DeserializeOwned;
@@ -39,6 +40,24 @@ impl std::fmt::Display for ApiError {
 }
 
 impl std::error::Error for ApiError {}
+
+thread_local! {
+    /// When the oldest stale response served on this thread was fetched.
+    static STALE: Cell<Option<SystemTime>> = const { Cell::new(None) };
+}
+
+/// Runs `f` and reports when the oldest stale cached response it was served
+/// (because the service could not answer) was fetched, if any.
+pub fn track_stale<R>(f: impl FnOnce() -> R) -> (R, Option<SystemTime>) {
+    STALE.set(None);
+    let result = f();
+    (result, STALE.take())
+}
+
+fn note_stale(fetched: SystemTime) {
+    let oldest = STALE.get().map_or(fetched, |seen| seen.min(fetched));
+    STALE.set(Some(oldest));
+}
 
 /// Builds a query string, skipping parameters whose value is `None` or empty.
 #[derive(Default)]
@@ -149,8 +168,11 @@ impl ApiClient {
                 Ok(value)
             }
             Err(error) if is_not_found(&error) => Err(error),
-            Err(error) => match cached.and_then(|hit| parse(&hit.body).ok()) {
-                Some(value) => Ok(value),
+            Err(error) => match cached.and_then(|hit| Some((parse(&hit.body).ok()?, hit))) {
+                Some((value, hit)) => {
+                    note_stale(hit.fetched);
+                    Ok(value)
+                }
                 None => Err(error),
             },
         }

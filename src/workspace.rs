@@ -18,7 +18,7 @@ use gpui_kit::*;
 
 use crate::api::models::SearchResults;
 use crate::format;
-use crate::loader::{self, Loadable};
+use crate::loader::{self, Loadable, StaleData};
 use crate::nav::Navigator;
 use crate::pages::{self, PageView};
 use crate::route::{ReferencePage, Route, SIDEBAR};
@@ -80,7 +80,10 @@ impl Workspace {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let nav = Navigator::new(cx.entity().downgrade());
         let search = cx.new(|cx| InputState::new(window, cx).placeholder("Search players, teams…"));
-        let subscription = cx.subscribe_in(&search, window, Self::on_search_event);
+        let subscriptions = vec![
+            cx.subscribe_in(&search, window, Self::on_search_event),
+            cx.observe_global::<StaleData>(|_, cx| cx.notify()),
+        ];
         let home = pages::build(&Route::Home, &nav, window, cx);
         Self {
             history: vec![Entry {
@@ -95,7 +98,7 @@ impl Workspace {
             search_open: false,
             search_task: None,
             sidebar_collapsed: false,
-            _subscriptions: vec![subscription],
+            _subscriptions: subscriptions,
         }
     }
 
@@ -115,6 +118,12 @@ impl Workspace {
             self.history.remove(0);
         }
         self.cursor = self.history.len() - 1;
+        let live: Vec<EntityId> = self
+            .history
+            .iter()
+            .map(|e| e.page.view().entity_id())
+            .collect();
+        StaleData::retain(cx, |id| live.contains(&id));
         self.focus_handle.focus(window, cx);
         cx.notify();
     }
@@ -611,6 +620,46 @@ impl Workspace {
             .into_any_element()
     }
 
+    /// A notice above the page while it shows cached data the service could
+    /// not refresh.
+    fn render_stale_notice(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+        let fetched = StaleData::oldest(self.current().page.view().entity_id(), cx)?;
+        let when = chrono::DateTime::<chrono::Local>::from(fetched)
+            .format("%b %-d, %Y at %-I:%M %p")
+            .to_string();
+        Some(
+            h_flex()
+                .w_full()
+                .px_4()
+                .py_1p5()
+                .gap_2()
+                .items_center()
+                .flex_wrap()
+                .text_sm()
+                .bg(cx.theme().warning.opacity(0.15))
+                .border_b_1()
+                .border_color(cx.theme().warning.opacity(0.4))
+                .child(
+                    gpui_kit::component::Icon::new(IconName::TriangleAlert)
+                        .small()
+                        .text_color(cx.theme().warning),
+                )
+                .child(format!(
+                    "Couldn't reach the Baseball History service. Showing saved data from {when}."
+                ))
+                .child(
+                    Button::new("stale-retry")
+                        .xsmall()
+                        .outline()
+                        .label("Try Again")
+                        .on_click(
+                            cx.listener(|this, _, window, cx| this.reload(&Reload, window, cx)),
+                        ),
+                )
+                .into_any_element(),
+        )
+    }
+
     fn render_status_bar(&self, cx: &mut Context<Self>) -> AnyElement {
         h_flex()
             .w_full()
@@ -779,7 +828,14 @@ impl Render for Workspace {
                     .min_h_0()
                     .w_full()
                     .child(self.render_sidebar(cx))
-                    .child(div().flex_1().min_w_0().h_full().child(page)),
+                    .child(
+                        v_flex()
+                            .flex_1()
+                            .min_w_0()
+                            .h_full()
+                            .children(self.render_stale_notice(cx))
+                            .child(div().flex_1().min_h_0().w_full().child(page)),
+                    ),
             )
             .child(self.render_status_bar(cx))
             .into_any_element()
