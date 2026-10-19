@@ -38,6 +38,7 @@ pub struct Cache {
 /// A cached response and whether it can be used without asking the service.
 pub struct Hit {
     pub body: Arc<str>,
+    pub fetched: SystemTime,
     pub fresh: bool,
 }
 
@@ -66,6 +67,7 @@ impl Cache {
             && entry.fetched.elapsed().is_ok_and(|age| age < FRESH_FOR);
         Some(Hit {
             body: entry.body,
+            fetched: entry.fetched,
             fresh,
         })
     }
