@@ -28,6 +28,26 @@ The builds aren't code-signed. On macOS, right-click the app and choose **Open**
 - **Global search** (debounced, live dropdown), a full **Search** page and **Compare Players**.
 - **About, Glossary** and **Surviving Records** reference pages.
 - Light and dark themes, back/forward history, and keyboard shortcuts.
+- **Caching:** pages you've visited load instantly and stay readable when the service is down.
+
+## Caching and offline use
+
+The app saves every API response it receives, so it doesn't ask the service again for data it already has:
+
+- **Fresh for 24 hours.** A saved response is reused for a day without contacting the service, including across restarts. The data is historical and changes about once a year.
+- **Shown when the service is unavailable.** If the service can't be reached, is too slow or returns an error, the app shows the older saved copy. A yellow notice above the page says when that data was saved, with a **Try Again** button. The notice clears once the page loads fresh data.
+- **Reload fetches fresh data.** Reload (`⌘R` / `Ctrl+R` / `F5`, or the refresh button) fetches the current page from the service, and every other page fetches fresh the next time you open it.
+- **Cleaned up automatically.** Saved responses older than 30 days are deleted when the app starts.
+
+The cache is stored here; delete the folder to clear it:
+
+| Platform | Location |
+| --- | --- |
+| macOS | `~/Library/Caches/com.baseballhistoryproject.desktop/api` |
+| Windows | `%LOCALAPPDATA%\com.baseballhistoryproject.desktop\api` |
+| Linux | `$XDG_CACHE_HOME/com.baseballhistoryproject.desktop/api` (default `~/.cache/…`) |
+
+Set `BASEBALL_HISTORY_NO_CACHE=1` to keep the cache in memory only, so nothing is written to disk and every launch starts empty.
 
 ## Build and run
 
@@ -62,9 +82,7 @@ The workflow builds the app on each platform and publishes these to a GitHub rel
 
 None of the builds are code-signed. On macOS, right-click the app and choose **Open** on first launch; on Windows, choose **More info → Run anyway** if SmartScreen warns. Running the workflow manually builds the same files as workflow artifacts without publishing a release.
 
-To point the app at another deployment of the API, set `BASEBALL_HISTORY_API_URL` (default `https://baseballhistoryproject.com`).
-
-API responses are cached on disk for 24 hours, and an older cached copy is shown, with a notice saying when it was saved, when the service can't be reached. Reload (⌘R / Ctrl+R / F5) fetches the current page fresh. The cache lives in `~/Library/Caches/com.baseballhistoryproject.desktop/api` on macOS, `%LOCALAPPDATA%\com.baseballhistoryproject.desktop\api` on Windows and `~/.cache/com.baseballhistoryproject.desktop/api` on Linux; set `BASEBALL_HISTORY_NO_CACHE=1` to keep it in memory only.
+To point the app at another deployment of the API, set `BASEBALL_HISTORY_API_URL` (default `https://baseballhistoryproject.com`). Responses are cached by full URL, so each deployment has its own cached data.
 
 ### Keyboard shortcuts
 
@@ -74,7 +92,7 @@ API responses are cached on disk for 24 hours, and an older cached copy is shown
 | --- | --- |
 | `⌘F` / `⌘K` | Focus search |
 | `⌘[` / `⌘]`, `Alt+←` / `Alt+→` | Back / Forward |
-| `⌘R` / `F5` | Reload the current view |
+| `⌘R` / `F5` | Reload the current view with fresh data |
 | `⌘B` | Toggle the sidebar |
 | `⌘⇧L` | Toggle dark mode |
 | `⌘⇧H` | Home |
@@ -89,6 +107,8 @@ cargo clippy --all-targets
 cargo run --example snapshots -- /tmp/shots [dark] home player:ruthba01 season:NYA:AL:1927 type:yank
 ```
 
-Layout: `src/api` holds the models and blocking client (requests run on GPUI's background executor). `src/workspace.rs` is the app shell. `src/pages` has one module per screen, and `src/ui` holds the shared table, picker and widgets.
+Snapshots use the same cache as the app. Set `BASEBALL_HISTORY_NO_CACHE=1` to render against live responses only.
+
+Layout: `src/api` holds the models, the blocking client (requests run on GPUI's background executor) and the response cache (`cache.rs`). `src/workspace.rs` is the app shell. `src/pages` has one module per screen, and `src/ui` holds the shared table, picker and widgets.
 
 Data: the [Lahman Baseball Database](https://sabr.org/lahman-database/), licensed CC BY-SA 3.0.
